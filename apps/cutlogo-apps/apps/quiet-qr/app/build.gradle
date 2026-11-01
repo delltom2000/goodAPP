@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'org.dailyfree.quietqr'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'org.dailyfree.quietqr'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildTypes { release { minifyEnabled false } }
+}
+
+dependencies { implementation 'com.google.zxing:core:3.5.3' }

@@ -1,0 +1,8 @@
+.toolchain/
+.gradle/
+**/build/
+**/local.properties
+*.jks
+*.keystore
+__pycache__/
+release-private/

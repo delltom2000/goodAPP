@@ -2,6 +2,16 @@
 
 原生 Java Android 应用，支持 Android 8.0 及以上。无需账号、联网或无障碍权限。
 
+## 1.3 · 中文 / English
+
+设置页新增「语言 / Language」选择，可随时切换中文和 English，重启后保留选择。设置页、权限说明、悬浮工具栏和运行通知同步切换。手机系统自身的权限页面语言仍由系统决定。
+
+「使用许可 / License」可直接阅读当前语言的完整许可证。许可证文件：[中文](LICENSE.zh-CN) · [English](LICENSE.en)，中文为准。
+
+Choose **中文 / English** under **语言 / Language** in settings. Your choice is saved and updates settings, permission explanations, the overlay toolbar, notifications, and the in-app license viewer. System-owned permission screens follow the phone language.
+
+本版已通过双语资源完整性、格式占位符和许可证打包内容检查，以及编译与签名校验；尚未完成真机语言切换和布局验证。
+
 ## 授权与商业使用
 
 本项目采用自定义的 [goodAPP 非商业免费及商业另行授权许可证](LICENSE)。这是源码可见项目，并非标准开源许可证授权的项目。
@@ -15,13 +25,13 @@
 
 ## 下载
 
-[下载悬浮时钟 1.2 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.2.apk)
+[下载悬浮时钟 1.3 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.3.apk)
 
 [返回 App 列表](../../README.md)
 
 ## 安装和使用
 
-1. 把 `dist/FloatingClock-1.2.apk` 传到安卓手机，点击安装。首次安装时，按系统提示允许该文件来源安装应用。
+1. 把 `dist/FloatingClock-1.3.apk` 传到安卓手机，点击安装。首次安装时，按系统提示允许该文件来源安装应用。
 2. 打开「悬浮时钟」，点击「开启悬浮时钟」。首次使用需开启「显示在其他应用上层」权限，随后返回应用。
 3. Android 13 及以上会请求通知权限，用于展示运行状态和关闭入口；拒绝通知权限也可以使用悬浮窗。
 4. 时钟开启后回到桌面，可打开微信或其他应用。拖动时间移动位置，轻点时间展开或收起工具栏。
@@ -60,6 +70,8 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -JavaHome "你的 JDK
 ```
 
 脚本使用 Android 官方 SDK 的 aapt2、D8、zipalign、apksigner，生成并验证 `dist/FloatingClock.apk`。构建工具下载到 `.tools`，不修改全局环境；测试签名保存在 `.tools/debug.jks`，保留它可以覆盖安装后续版本。
+
+已有工具与签名可通过构建脚本参数 `-ToolRoot` 和 `-KeyStore` 指定路径；签名文件应保存在仓库外。
 
 若平台 SDK 下载缓慢，可运行 `python scripts/download_platform.py` 分段下载 Android 35 平台包。
 

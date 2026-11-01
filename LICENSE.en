@@ -1,0 +1,119 @@
+goodAPP Noncommercial Free Use and Separate Commercial License
+Version 1.0, November 1, 2026
+
+This is a custom source-available license, not an open-source license such as
+MIT, Apache, or GPL. This English text is a translation of the Chinese license.
+The Chinese text prevails if the two texts differ.
+
+1. Licensor and Scope
+
+"Licensor" means the copyright holder of the relevant goodAPP content or a
+party authorized to license it. Project maintainers may grant rights only to
+content they own or for which they have obtained sufficient authorization.
+"Software" means code, documentation, original assets, and corresponding
+programs expressly distributed with this License, including their
+copyright-protected parts. This License does not require permission for ideas,
+methods, or acts that do not require permission by law, and does not restrict
+statutory exceptions. Third-party components, assets, or contributions under
+separate licenses remain governed by their original licenses.
+
+2. Free Noncommercial License
+
+Subject to compliance with this License, Licensor grants a worldwide,
+nonexclusive, royalty-free license, to the extent Licensor is authorized to
+do so, to use, copy, study, modify, and distribute the Software for
+noncommercial purposes. Free uses include:
+1) Everyday personal use, learning, and experimentation by individuals in
+   their personal capacity, unrelated to business activities;
+2) Noncommercial teaching and research that do not serve a commercial entity
+   or commercial project;
+3) Noncommercial sharing and distribution of modified versions without
+   charges or revenue from advertising, paid features, or other commercial
+   arrangements.
+
+3. Separate Paid Authorization for Commercial Use
+
+This License grants no permission for commercial use. Before undertaking any
+of the following uses, the user must enter into a separate written commercial
+license agreement with a party authorized to grant that license and fulfill
+its payment and other obligations:
+1) Selling, renting, or charging for the Software or modified versions;
+2) Using the Software for advertising revenue, paid feature unlocks,
+   subscriptions, paid downloads, or other commercial monetization;
+3) Incorporating the Software or its protected code into commercial products,
+   devices, services, or deliverables for customers;
+4) Using the Software for internal production, operations, office work, or
+   business services of a company, sole trader, or other commercial entity;
+5) Developing, deploying, or customizing solutions containing the Software
+   for customers for compensation.
+
+Whether a use is commercial depends on its actual purpose and manner of use,
+not merely on whether the user is an individual, an organization is registered
+as nonprofit, or the Software is available as a free download. An employee's
+private use in a personal capacity, unrelated to work or business, may still
+qualify under Section 2. If uncertain about a use, contact the project
+maintainer before using the Software.
+
+Apply for commercial authorization through Issues in the Software's original
+goodAPP repository or the contact details published in that repository's
+README. If Issues are disabled, use the maintainer's public contact details.
+An application, discussion, quotation, donation, or sponsorship does not itself
+constitute commercial authorization. Fees, term, user or device limits,
+permitted versions, distribution scope, and support are determined by a
+separate written agreement; there is no universal default price.
+
+4. Conditions for Copying, Modification, and Distribution
+
+1) Distributions of the Software's source code or programs must include this
+   License and preserve existing copyright, attribution, and license notices.
+2) Modified releases must clearly identify modifications and their dates and
+   must not impersonate official releases or claim official endorsement.
+3) Noncommercial restrictions on the Software and its inherited portions in
+   modified versions must not be removed. Recipients must not be granted
+   commercial rights that this License does not grant; they may obtain the
+   corresponding noncommercial rights under this License.
+4) Modifiers retain rights to their original additions. This License does not
+   require copyright assignment or give maintainers commercial relicensing
+   rights over third-party additions; those rights require separate permission.
+5) This License does not require disclosure of modifications used only
+   privately or submission of modifications to the original project.
+
+5. Reserved Rights and Existing Licenses
+
+Rights not expressly granted are reserved by their respective holders. This
+License does not grant rights to use trademarks, project names, or logos to
+imply promotional endorsement; ordinary source attribution is permitted.
+This License does not revoke rights already lawfully obtained under other
+licenses previously applicable to the Software. Existing third-party licenses
+and statutory rights are not reduced by this document.
+
+6. Disclaimer
+
+To the extent permitted by applicable law, the Software is provided "AS IS",
+without express or implied warranties of merchantability, fitness for a
+particular purpose, noninfringement, accuracy, uninterrupted operation, or
+freedom from errors. To the extent permitted by applicable law, Licensor is
+not liable for losses arising from use of or inability to use the Software.
+This section does not exclude or limit liability that cannot lawfully be
+excluded or limited. Express warranty or support commitments in a commercial
+agreement are governed by that agreement.
+
+7. Breach, Termination, and Reinstatement
+
+Acts exceeding the permitted scope or violating this License are not
+authorized. Users must cease those acts and cease relying on this License
+to continue using or distributing the Software. If a user fully remedies a
+breach within 30 days after receiving written notice from the rights holder
+and no other unremedied breach remains, the noncommercial permission under
+this License is reinstated. Unauthorized commercial use may resume only
+after obtaining a separate commercial license; remedying a breach does not
+automatically discharge liability for prior acts. A recipient who lawfully
+received a copy and continues to comply retains their permission even if
+an upstream user breaches this License.
+
+8. Relationship of Terms
+
+Where an authorized licensor and user enter into a separate commercial
+license agreement, that agreement governs within its scope. If any provision
+is invalid or unenforceable by law, independently enforceable remaining
+provisions remain effective. The Chinese text of this License prevails.

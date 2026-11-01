@@ -6,7 +6,7 @@
 
 | App | 平台 | 功能 | 源码与说明 | 安装包 |
 | --- | --- | --- | --- | --- |
-| 悬浮时钟 | Android 8.0+ | 跨应用显示时间、拖动位置、外观调整、跟随握持方向旋转 | [floating-clock](apps/floating-clock/) | [下载 1.2 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.2.apk) |
+| 悬浮时钟 | Android 8.0+ | 跨应用显示时间、拖动位置、外观调整、跟随握持方向旋转 | [floating-clock](apps/floating-clock/) | [下载 1.3 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.3.apk) |
 
 悬浮时钟目前为测试版本：已通过编译、签名校验和方向计算单元测试；不同手机上的实际重力旋转和后台运行行为仍需验证。安装包使用测试签名。
 
@@ -28,7 +28,13 @@ goodAPP/
 
 后续 App 放入 `apps/<app-name>/`，并在上面的表格中添加入口。构建方法以各 App 的 README 为准。
 
+## Language / 语言
+
+Floating Clock 1.3 supports **中文 / English** in its settings. The selected language is saved and applies to settings, the overlay toolbar, notifications, and the built-in license viewer.
+
 ## 授权
+
+许可证：[中文](LICENSE.zh-CN) · [English](LICENSE.en)。英文为对应译文，有歧义时以中文为准。
 
 本仓库采用自定义的 [goodAPP 非商业免费及商业另行授权许可证](LICENSE)，是源码可见项目，不采用 MIT、Apache 或 GPL 等标准开源许可证。
 

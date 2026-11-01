@@ -1,5 +1,11 @@
 > Android 手机独立自动版请看 [0.4.0 使用说明](ANDROID-OFFLINE.md)，安装 [自动版 APK](../../dist/cleanclip-0.4.0-auto.apk)。导入视频后点击“自动查找 Logo 并消除”即可，下面是电脑本地网站及旧客户端说明。
 
+## 在线网页版
+
+[Hugging Face / CutLogo](https://huggingface.co/spaces/dellweb3/CutLogo) · [直接打开](https://dellweb3-cutlogo.hf.space)。云端使用 Space CPU 处理，素材会临时上传；按浏览器标签页隔离会话，闲置约一小时后过期并定期清理，完成后请及时下载。LaMa 在 CPU 上较慢，建议先用短片段；支持快速填补。网页操作仍为框选或导入样图后自动跟踪，手机 APK 的主按钮支持无样图自动检测。
+
+部署源码在 `hf-space/`。运行 `python hf-space/package_space.py` 生成 `build/hf-space/`，只将该目录中运行必需的文件上传到 Docker Space。`python hf-space/test_hosted.py` 验证会话、任务和媒体隔离；部署使用现有 CPU 配置，不请求付费硬件。
+
 # 净片本地网站
 
 直接访问 http://127.0.0.1:8765/ ，无需连接码、登录或账号。使用本机 GPU 处理，视频不上传第三方。

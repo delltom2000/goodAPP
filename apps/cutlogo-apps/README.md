@@ -13,3 +13,5 @@
 已加入 goodAPP 项目目录。[Android 自动版说明](apps/cleanclip/ANDROID-OFFLINE.md) · [0.4.0 APK](dist/cleanclip-0.4.0-auto.apk) · [电脑本地工具](apps/cleanclip/README.md)。
 
 手机端导入视频后，点击“自动查找 Logo 并消除”即可识别并导出；手动框选、Logo 样图和固定角标是可选项。
+
+网页版已部署到 [Hugging Face / CutLogo](https://huggingface.co/spaces/dellweb3/CutLogo)。云端版本会上传素材到 Space 的临时存储，使用 CPU 处理；与本地运行模式不同。

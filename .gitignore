@@ -1,0 +1,20 @@
+# Local tools, builds and IDE metadata
+.tools/
+build/
+.gradle/
+.idea/
+*.iml
+local.properties
+
+# Credentials and signing material
+*.jks
+*.keystore
+*.p12
+*.pfx
+.env
+.env.*
+*.apk.idsig
+
+# OS files
+.DS_Store
+Thumbs.db

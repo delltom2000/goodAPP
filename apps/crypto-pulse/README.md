@@ -25,7 +25,7 @@
 
 ## 下载与安装
 
-[下载 CryptoPulse 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · SHA-256 见 [dist/SHA256.txt](dist/SHA256.txt)
+[下载 CryptoPulse 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · SHA-256 见 [dist/SHA256.txt](dist/SHA256.txt) · 备用：[发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0)
 
 支持 Android 8.0 及以上（minSdk 26），已用 v2 + v3 方案签名，大小 1.2 MB。
 

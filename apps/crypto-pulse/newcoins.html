@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-palette="cn">
+<head>
+<meta charset="UTF-8">
+<script>
+/* 旧内核兜底：async/await 这类语法在老 WebView 里会直接解析失败，整页全白。
+   本段必须保持 ES5 语法，否则它自己也跑不起来。 */
+(function () {
+  var why = '';
+  try { new Function('return async function () {}'); } catch (e) { why = 'async/await'; }
+  if (!why && typeof Promise === 'undefined') why = 'Promise';
+  if (!why && typeof fetch === 'undefined') why = 'fetch';
+  if (!why && typeof WebSocket === 'undefined') why = 'WebSocket';
+  if (!why) return;
+  function show() {
+    var d = document.createElement('div');
+    d.setAttribute('style', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;'
+      + 'background:#0d1219;color:#e6ebf2;padding:32px 24px;box-sizing:border-box;'
+      + 'font:14px/1.9 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC",sans-serif;');
+    d.innerHTML = '<div style="font-size:17px;font-weight:600;margin-bottom:14px">系统组件版本过旧</div>'
+      + '<div style="color:#8b97a8">本页需要较新的 WebView 内核，当前内核不支持 '
+      + '<b style="color:#f0b90b">' + why + '</b>。<br><br>'
+      + '请在应用商店更新「Android System WebView」或「Chrome」，然后重新打开。</div>';
+    document.body.appendChild(d);
+  }
+  if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>新币雷达 · 上链 90 天项目知识库与评分</title>
+<meta name="description" content="跟踪最近上链的新加密项目，基于交易所官方上线时间、Binance 风险标签、跨所报价一致性建立知识库并评分。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1219'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23f0b90b' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23f0b90b'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d1219">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="币市脉搏">
+<link rel="apple-touch-icon" href="icons/icon-apple-180.png">
+<link rel="preconnect" href="https://www.okx.com">
+<link rel="preconnect" href="https://api.gateio.ws">
+<link rel="stylesheet" href="css/style.css?v=20261103k">
+<link rel="stylesheet" href="css/newcoins.css?v=20261103k">
+<script>
+window.__errs = [];
+(function () {
+  function push(msg) {
+    window.__errs.push(String(msg));
+    var box = document.getElementById('__errbox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = '__errbox';
+      box.style.cssText = 'position:fixed;left:0;bottom:0;z-index:999;max-width:100%;' +
+        'padding:6px 10px;background:#7a1020;color:#fff;font:11px/1.5 monospace;display:none;';
+      (document.body || document.documentElement).appendChild(box);
+    }
+    box.textContent = window.__errs.slice(-5).join(' | ');
+  }
+  window.__pushErr = push;
+  window.onerror = function (msg, src, line, col) {
+    push(msg + ' @' + (src || '').split('/').pop() + ':' + line + ':' + col);
+  };
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    push('PromiseRejection: ' + ((r && r.message) || r));
+  });
+  var _ce = console.error;
+  console.error = function () {
+    push(Array.prototype.map.call(arguments, function (a) {
+      return (a && a.message) || String(a);
+    }).join(' '));
+    _ce.apply(console, arguments);
+  };
+})();
+</script>
+</head>
+<body class="nc-page">
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 2 4 9v14l12 7 12-7V9L16 2Z" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/>
+      <path d="M16 8v8m0 0 4 4m-4-4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="16" cy="22.5" r="1.9" fill="currentColor"/>
+    </svg>
+    <div class="brand-text">
+      <h1>新币雷达</h1>
+      <p>最近上链项目的知识库与可靠性评分</p>
+    </div>
+  </div>
+
+  <button class="btn-chip watch-nav" id="watchNavBtn" title="打开自选股列表">
+    <span class="wn-star" aria-hidden="true">★</span>
+    <span>自选股</span>
+    <b class="wn-count" id="watchNavCount">0</b>
+  </button>
+
+  <nav class="app-nav" aria-label="应用切换">
+    <a href="index.html">市场脉搏</a>
+    <a href="newcoins.html" class="active" aria-current="page">新币雷达</a>
+  </nav>
+
+  <div class="conn" id="conn" data-state="init">
+    <span class="conn-dot"></span>
+    <span class="conn-text" id="connText">等待同步…</span>
+  </div>
+
+  <div class="topbar-right">
+    <div class="clock-box">
+      <span class="clock" id="clock">--:--:--</span>
+      <span class="clock-label">北京时间</span>
+    </div>
+    <button class="btn-chip" id="paletteBtn" title="切换涨跌配色">
+      <span class="chip-dot up"></span><span class="chip-dot down"></span>
+      <span id="paletteText">红涨</span>
+    </button>
+    <button class="btn-icon" id="refreshBtn" title="重新同步数据" aria-label="刷新">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+      </svg>
+    </button>
+    <button class="btn-chip btn-lang" data-lang-toggle title="Switch to English" aria-label="Switch to English">EN</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ 口径说明 + 窗口切换 ============ -->
+  <section class="scope-bar">
+    <div class="scope-left">
+      <div class="scope-tabs" id="windowTabs" role="tablist" aria-label="上线时间窗口"></div>
+      <span class="scope-count" id="scopeCount">正在统计…</span>
+    </div>
+    <div class="scope-right">
+      <span class="scope-note" id="scopeNote"></span>
+      <button class="btn-chip" id="methodBtn" title="查看评分模型说明">评分模型</button>
+    </div>
+  </section>
+
+  <!-- ============ KPI ============ -->
+  <section class="kpi-grid nc-kpi" id="kpiGrid" aria-label="新币总览">
+    <div class="kpi skeleton"></div><div class="kpi skeleton"></div><div class="kpi skeleton"></div>
+    <div class="kpi skeleton"></div><div class="kpi skeleton"></div><div class="kpi skeleton"></div>
+  </section>
+
+  <!-- ============ 主体 ============ -->
+  <div class="nc-layout">
+
+    <!-- 左：主表 -->
+    <section class="panel nc-table-panel">
+      <div class="panel-head">
+        <h2>新币评分榜</h2>
+        <div class="panel-tools">
+          <input type="search" id="searchInput" class="nc-search" placeholder="搜索币种 / 名称…" autocomplete="off" spellcheck="false">
+          <select id="gradeFilter" class="nc-select" aria-label="按评级筛选">
+            <option value="all">全部评级</option>
+            <option value="A">仅 A 级</option>
+            <option value="B">仅 B 级</option>
+            <option value="AB">A + B 级</option>
+            <option value="avoid">风险提示</option>
+          </select>
+          <select id="exFilter" class="nc-select" aria-label="按交易所筛选">
+            <option value="all">全部交易所</option>
+            <option value="binance">上了 Binance</option>
+            <option value="okx">上了 OKX</option>
+            <option value="bybit">上了 Bybit</option>
+            <option value="multi">≥3 家交易所</option>
+          </select>
+          <select id="watchFilter" class="nc-select" aria-label="按自选筛选">
+            <option value="all">全部项目</option>
+            <option value="watch">仅自选</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="nc-table">
+          <thead>
+            <tr>
+              <th style="width:46px" data-sort="scoreRank">#</th>
+              <th class="col-name" data-sort="base">项目</th>
+              <th style="width:78px" data-sort="ageDays">上线</th>
+              <th style="width:104px" data-sort="price" class="num">价格</th>
+              <th style="width:86px" data-sort="change24h" class="num">24h</th>
+              <th style="width:96px" data-sort="quoteVolume" class="num">成交额</th>
+              <th style="width:92px" data-sort="marketCap" class="num">市值</th>
+              <th style="width:118px" data-sort="exchanges">交易所</th>
+              <th style="width:96px" data-sort="reliability" class="num">可靠性</th>
+              <th style="width:96px" data-sort="potential" class="num">潜力</th>
+              <th style="width:70px" data-sort="total" class="num">综合</th>
+              <th style="width:84px" data-sort="grade">评级</th>
+              <th style="width:54px" class="center">自选</th>
+            </tr>
+          </thead>
+          <tbody id="newBody">
+            <tr class="nc-loading-row"><td colspan="13">正在抓取各交易所上线数据…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="nc-table-foot">
+        <span id="tableMeta">—</span>
+        <span class="nc-scroll-hint">← 左右滑动查看全部列 →</span>
+        <span class="nc-disclaimer">评分基于公开数据，不构成投资建议</span>
+      </div>
+    </section>
+
+    <!-- 右：知识库 + 自选库 -->
+    <aside class="nc-side">
+
+      <!-- 知识库 -->
+      <section class="panel" id="kbPanel">
+        <div class="panel-head">
+          <h2>知识库</h2>
+          <span class="panel-tag" id="kbStatus">未初始化</span>
+        </div>
+        <div class="kb-body" id="kbBody">
+          <div class="kb-grid">
+            <div class="kb-cell"><span class="kb-num" id="kbProjects">0</span><span class="kb-lab">建档项目</span></div>
+            <div class="kb-cell"><span class="kb-num" id="kbSnaps">0</span><span class="kb-lab">快照记录</span></div>
+            <div class="kb-cell"><span class="kb-num" id="kbDays">0</span><span class="kb-lab">积累天数</span></div>
+            <div class="kb-cell"><span class="kb-num" id="kbCover">0%</span><span class="kb-lab">市值覆盖</span></div>
+          </div>
+          <div class="kb-note" id="kbNote">
+            知识库会在每次打开页面时记录当天快照。积累越久，"交易持续性"和"回撤位置"两项越准。
+          </div>
+          <div class="grade-bars" id="gradeBars"></div>
+        </div>
+      </section>
+
+      <!-- 自选库 -->
+      <section class="panel" id="watchPanel">
+        <div class="panel-head">
+          <h2>自选库</h2>
+          <div class="panel-tools">
+            <span class="panel-tag" id="watchCapacity">0 / 10 目录</span>
+            <button class="btn-mini" id="newDirBtn" title="新建自选目录">＋ 新建</button>
+          </div>
+        </div>
+        <div class="watch-body" id="watchBody">
+          <div class="watch-empty">还没有自选目录。点「＋ 新建」建立第一个，最多 10 个目录、每个 50 个币种。</div>
+        </div>
+        <div class="watch-foot">
+          <button class="btn-mini ghost" id="watchExportBtn">导出</button>
+          <button class="btn-mini ghost" id="watchImportBtn">导入</button>
+        </div>
+      </section>
+
+    </aside>
+  </div>
+
+</main>
+
+<!-- ============ 项目详情抽屉 ============ -->
+<div class="drawer-mask" id="drawerMask" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="项目详情">
+  <div class="drawer-head">
+    <div class="drawer-id">
+      <img id="dIcon" alt="" width="40" height="40">
+      <div>
+        <h3 id="dName">—</h3>
+        <p id="dSub">—</p>
+      </div>
+    </div>
+    <button class="btn-icon" id="dClose" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="drawer-price">
+    <span class="dp-price" id="dPrice">—</span>
+    <span class="dp-chg" id="dChange">—</span>
+  </div>
+
+  <div class="score-hero">
+    <div class="sh-ring" id="dRing"></div>
+    <div class="sh-nums">
+      <div><span>可靠性</span><b id="dRel">—</b></div>
+      <div><span>潜力</span><b id="dPot">—</b></div>
+      <div><span>综合</span><b id="dTotal">—</b></div>
+    </div>
+    <div class="sh-grade" id="dGrade">—</div>
+  </div>
+
+  <div class="reason-block" id="dReason"></div>
+
+  <div class="factor-block">
+    <div class="fb-title">可靠性因子 <span id="dRelSum">—</span></div>
+    <div id="dRelFactors"></div>
+  </div>
+
+  <div class="factor-block">
+    <div class="fb-title">潜力因子 <span id="dPotSum">—</span></div>
+    <div id="dPotFactors"></div>
+  </div>
+
+  <div class="factor-block">
+    <div class="fb-title">各交易所报价</div>
+    <div id="dExchanges" class="ex-list"></div>
+  </div>
+
+  <div class="factor-block">
+    <div class="fb-title">知识库记录 <span id="dKbDays">—</span></div>
+    <div id="dKbInfo" class="kb-info"></div>
+  </div>
+
+  <div class="drawer-actions">
+    <div class="dd-select" id="dDirSelect"></div>
+    <button class="btn-primary" id="dWatch">加入自选</button>
+  </div>
+</aside>
+
+<!-- ============ 自选股面板 ============ -->
+<div class="drawer-mask" id="watchMask" hidden></div>
+<aside class="drawer watch-drawer" id="watchDrawer" hidden aria-label="自选股">
+  <div class="drawer-head">
+    <div class="drawer-id">
+      <div>
+        <h3>自选股</h3>
+        <p id="wdSub">—</p>
+      </div>
+    </div>
+    <button class="btn-icon" id="wdClose" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+  <div class="wdd-body" id="wdBody"></div>
+  <div class="drawer-actions">
+    <button class="btn-mini ghost" id="wdManage">在右侧管理目录</button>
+    <button class="btn-primary" id="wdAddDir">＋ 新建目录</button>
+  </div>
+</aside>
+
+<!-- ============ 评分模型说明 ============ -->
+<div class="drawer-mask" id="methodMask" hidden></div>
+<aside class="drawer method-drawer" id="methodDrawer" hidden aria-label="评分模型说明">
+  <div class="drawer-head">
+    <div class="drawer-id">
+      <div>
+        <h3>评分模型</h3>
+        <p>v1.0 · 12 个因子 · 权重固定可解释</p>
+      </div>
+    </div>
+    <button class="btn-icon" id="methodClose" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+  <div class="method-body">
+    <p class="method-lead">
+      评分不做任何拟合，全部是可验证的客观数据。每一项都能在详情里看到得分和理由。
+    </p>
+
+    <h4>可靠性（权重 55%）—— 项目会不会归零、跑路、被下架</h4>
+    <div class="method-table">
+      <div><b>交易所背书</b><span>32 分</span><em>Binance 14 / OKX 9 / Bybit 7 / Gate 6 / Bitget 5，累加。上主流所要过尽调。</em></div>
+      <div><b>官方风险信号</b><span>24 分</span><em>Binance 无警示 24；Seed 种子标 14；Monitoring 观察标 4；未上 Binance 9。</em></div>
+      <div><b>流动性深度</b><span>20 分</span><em>24h 成交额对数刻度，$1 万到 $3160 万线性映射。</em></div>
+      <div><b>交易持续性</b><span>14 分</span><em>知识库连续记录天数。首日使用按中性 7 分。</em></div>
+      <div><b>跨所一致性</b><span>8 分</span><em>多家报价价差 &lt;2% 满分。价差过大常意味着假币或僵尸盘。</em></div>
+      <div><b>价格稳定性</b><span>6 分</span><em>24h 波动 &lt;6% 满分，&gt;45% 不得分。</em></div>
+    </div>
+
+    <h4>潜力（权重 45%）—— 还有没有资金关注和上涨空间</h4>
+    <div class="method-table">
+      <div><b>资金关注度</b><span>24 分</span><em>换手率 8%~60% 最优。无市值的币退化为池内成交额百分位。</em></div>
+      <div><b>价格动量</b><span>22 分</span><em>24h 涨 5~25% 最佳；暴涨 &gt;100% 反而扣分（追高风险）。</em></div>
+      <div><b>市值空间</b><span>20 分</span><em>市值 &lt;$2000 万满分，&gt;$20 亿几乎不得分。</em></div>
+      <div><b>上线新鲜度</b><span>14 分</span><em>7 天内 14 分，180 天以上 1 分。</em></div>
+      <div><b>赛道与叙事</b><span>12 分</span><em>命中 Binance 热点标签（AI / Meme / RWA / L1L2 / Launchpool…）。</em></div>
+      <div><b>回撤与位置</b><span>8 分</span><em>距知识库最高价回撤 30~70% 视为健康回调区。</em></div>
+    </div>
+
+    <h4>评级</h4>
+    <div class="method-table">
+      <div><b>A 级</b><span>≥68 且可靠≥55</span><em>基本面与动能同时达标</em></div>
+      <div><b>B 级</b><span>≥55 且可靠≥42</span><em>部分指标过关</em></div>
+      <div><b>C 级</b><span>≥42</span><em>证据偏弱，仅作观察</em></div>
+      <div><b>D 级</b><span>&lt;42</span><em>多项指标不达标</em></div>
+    </div>
+
+    <h4>模型的实测区分度</h4>
+    <p class="method-lead">
+      用当前 90 天窗口内的样本检验，A 到 D 四档的中位成交额与危险率完全单调：
+    </p>
+    <div class="method-proof" id="methodProof"></div>
+
+    <h4>已知局限</h4>
+    <ul class="method-limits">
+      <li><b>不是涨跌预测。</b>评分衡量"当前可观察的健康度"，不预测未来价格。</li>
+      <li><b>窗口内项目本来就不多。</b>90 天内的真实加密新项目只有几十个，500 是可容纳的上限而非实际数量。</li>
+      <li><b>市值只覆盖上 Binance 的项目。</b>其他交易所不公开流通量，这类项目的资金关注度改用池内排名估算。</li>
+      <li><b>知识库需要时间。</b>首次使用时没有历史快照，持续性和回撤两项按中性计。</li>
+    </ul>
+  </div>
+</aside>
+
+<!-- Toast -->
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/i18n.js?v=20261103k"></script>
+<script src="js/snap.js?v=20261103k"></script>
+<script src="js/watch.js?v=20261103k"></script>
+<script src="js/kb.js?v=20261103k"></script>
+<script src="js/score.js?v=20261103k"></script>
+<script src="js/newfeed.js?v=20261103k"></script>
+<script src="js/quote.js?v=20261103k"></script>
+<script src="js/ncrender.js?v=20261103k"></script>
+<script src="js/ncapp.js?v=20261103k"></script>
+<script src="js/pwa.js?v=20261103k"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# 构建中间产物
+android/build/
+android/app/src/main/assets/www/
+
+# 由 tools/gen_bundle.py 生成的资源包（构建时自动重建）
+android/app/src/main/java/com/niulai/crypto/WebBundle.java
+
+# 测试与运行日志
+.logs/
+android/jvmtest/out/
+
+# 本地签名材料与安装包附属文件
+*.jks
+*.keystore
+*.apk.idsig
+
+# 系统文件
+.DS_Store
+Thumbs.db

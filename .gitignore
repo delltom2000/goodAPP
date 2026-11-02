@@ -18,3 +18,6 @@ local.properties
 # OS files
 .DS_Store
 Thumbs.db
+
+# 网页版发布用的纯静态目录（由 apps/crypto-pulse/tools/stage-web.sh 生成）
+web-dist/

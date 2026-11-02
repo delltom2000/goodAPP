@@ -25,7 +25,9 @@
 
 ## 下载与安装
 
-[下载 CryptoPulse 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · SHA-256 见 [dist/SHA256.txt](dist/SHA256.txt) · 备用：[发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0)
+**网页版（免安装，手机浏览器直接打开）**：https://crypto-pulse-87453.app.workbuddy.host/?sharecode=HBNRIO22TM
+
+**安卓 App**：[下载 CryptoPulse 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · SHA-256 见 [dist/SHA256.txt](dist/SHA256.txt) · 备用：[发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0)
 
 支持 Android 8.0 及以上（minSdk 26），已用 v2 + v3 方案签名，大小 1.2 MB。
 
@@ -35,7 +37,7 @@
 
 安装包使用本项目测试签名。仓库不包含签名密钥（`*.jks` 已忽略），自行构建会生成新密钥，覆盖安装前需先卸载旧版。
 
-### 网页版
+### 自己跑一份网页版
 
 静态站点，任意静态服务器都能跑：
 
@@ -44,6 +46,8 @@ python -m http.server 8420 --bind 127.0.0.1
 ```
 
 也可以直接双击 `start.bat`（Windows），会自动开浏览器。因为要读行情 API，必须走 HTTP 而不是 `file://` 打开。支持 PWA，桌面浏览器可「安装」成独立窗口。
+
+线上那份由 `tools/stage-web.sh` 把纯网页资源（`index.html`、`newcoins.html`、`css/`、`js/`、`icons/`、`manifest.webmanifest`、`sw.js`）同步到仓库根的 `web-dist/` 后发布，不含安卓工程与 APK。改完前端重新执行一次脚本再发布即可。
 
 ## 使用说明
 
@@ -72,6 +76,7 @@ crypto-pulse/
 ├── icons/                         # PWA 图标
 ├── manifest.webmanifest · sw.js   # PWA 与离线缓存
 ├── start.bat                      # Windows 一键起本地服务
+├── tools/stage-web.sh             # 同步纯网页资源到 web-dist/ 用于线上发布
 ├── android/                       # 安卓壳工程
 │   ├── build.sh                   # 构建脚本（不依赖 Gradle）
 │   ├── emulator-run.sh            # 模拟器一键装包截图

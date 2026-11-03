@@ -20,6 +20,7 @@ const DataFeed = (() => {
     subscribed: 0,
     metaLoaded: false,
     error: null,
+    hint: null,               // 首屏迟迟拉不到数据时的常驻提示（区别于一次性 toast）
     offline: false,            // 当前展示的是本地留存的历史快照
     cachedAt: 0,               // 快照时间戳（离线时用来标注「几点」）
   };
@@ -233,7 +234,8 @@ const DataFeed = (() => {
 
     const okCount = EXCHANGES.filter(ex => state.exchangeStatus[ex.id] === 'ok').length;
     if (okCount === 0) {
-      state.error = '全部数据源不可达';
+      // 明确告诉用户原因：国内直连通常取不到交易所行情，需要代理 / VPN
+      state.error = '行情接口不可达 · 请检查代理 / VPN';
       emit('status');
       return;
     }
@@ -243,6 +245,7 @@ const DataFeed = (() => {
 
     buildPool(merged);
     state.error = null;
+    state.hint = null;
     state.offline = false;
     state.cachedAt = 0;
 
@@ -563,6 +566,7 @@ const DataFeed = (() => {
     getList: () => state.list,
     getCoin: (base) => state.coins.get(base),
     refresh: refreshSnapshot,
+    setHint: (msg) => { state.hint = msg; emit('status'); },
     reloadMeta: () => loadMeta(true),
   };
 

@@ -15,6 +15,8 @@
     'BINANCE · 成交额 TOP 500 实时分析': 'BINANCE · TOP 500 BY VOLUME · LIVE',
     '最近上链项目的知识库与可靠性评分': 'Reliability scores for recently listed projects',
     '正在接入行情…': 'Connecting to feed…',
+    '行情接口连接较慢 · 若持续无数据请检查代理 / VPN': 'Feed is slow · if no data, check proxy / VPN',
+    '行情接口不可达 · 请检查代理 / VPN': 'Feed unreachable · check proxy / VPN',
     '北京时间': 'BJT',
     '红涨': 'Red↑',
     '绿涨': 'Green↑',

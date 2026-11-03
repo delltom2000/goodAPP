@@ -334,10 +334,10 @@
       Render.toast('数据源连接失败，请检查网络或代理');
     });
 
-    // 兜底：若 6 秒后仍无数据，提示
+    // 兜底：若 6 秒后仍无数据，把原因常驻在状态条上（toast 只闪 1.8 秒，容易错过）
     setTimeout(() => {
       if (DataFeed.getList().length === 0) {
-        Render.renderStatus(DataFeed.getState());
+        DataFeed.setHint('行情接口连接较慢 · 若持续无数据请检查代理 / VPN');
         Render.toast('数据加载较慢，可能在等待网络代理…');
       }
     }, 6000);

@@ -809,13 +809,15 @@ const Render = (() => {
       label = `离线数据 · ${fmtClock(cachedAt)}`;
     } else if (state.error) {
       mode = 'error';
-      label = state.error + '（重试中）';
+      label = state.error;
     } else if (state.lastSnapshotAt) {
       mode = 'poll';
       label = `轮询模式 · ${fmtClock(state.lastSnapshotAt)}`;
     } else {
-      mode = 'init';
-      label = '正在接入行情…';
+      // 首屏迟迟没有数据时，把「为什么没数据」常驻在状态条上，
+      // 而不是一直显示「正在接入行情…」让人以为页面卡死或网络断了
+      mode = state.hint ? 'poll' : 'init';
+      label = state.hint || '正在接入行情…';
     }
 
     if (el.conn.dataset.state !== mode) el.conn.dataset.state = mode;

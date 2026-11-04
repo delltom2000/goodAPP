@@ -1,0 +1,16 @@
+.toolchain/
+.gradle/
+android/.gradle/
+android/local.properties
+android/app/build/
+android/app/src/main/assets/
+android/*.keystore
+artifacts/
+__pycache__/
+.openai/
+.env
+.env.*
+*.jks
+*.keystore
+*.apk.idsig
+*.pyc

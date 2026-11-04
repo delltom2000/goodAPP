@@ -9,10 +9,13 @@
 | 悬浮时钟 | Android 8.0+ | 跨应用显示时间、拖动位置、外观调整、跟随握持方向旋转 | [floating-clock](apps/floating-clock/) | [下载 1.3 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.3.apk) |
 | 净片 CleanClip | Android 8.0+ / 网页 | 手机离线自动查找角落 Logo、跟随位置变化并修补导出；电脑 LaMa 修补工具 | [使用说明](apps/cutlogo-apps/apps/cleanclip/README.md) · [在线体验](https://huggingface.co/spaces/dellweb3/CutLogo) | [0.4.0 自动版 APK](apps/cutlogo-apps/dist/cleanclip-0.4.0-auto.apk) |
 | 币市脉搏 Crypto Pulse | Android 8.0+ / 网页 | 500 个活跃币实时行情；新币雷达用 12 个因子给出可解释评分；自选、中英切换、断网保留离线快照 | [使用说明](apps/crypto-pulse/README.md) · [在线体验](https://crypto-pulse-87453.app.workbuddy.host/?sharecode=HBNRIO22TM) | [下载 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · [发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0) |
+| 雅思一本通 · studyen | Android 8.0+ / 本地网页 | 语法基础、分题型训练、错题本、自适应模拟与学习评估；包含 10,000 条练习记录，支持安卓离线使用 | [源码与使用说明](apps/studyen/README.md) | [下载 0.2.1 测试版 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/studyen/dist/downloads/jianjin-ielts-debug.apk) |
 
 悬浮时钟目前为测试版本：已通过编译、签名校验和方向计算单元测试；不同手机上的实际重力旋转和后台运行行为仍需验证。安装包使用测试签名。
 
 币市脉搏 1.0.0 的行情与评分逻辑已通过浏览器实机校验（含 390px 竖屏、断网保留数据、中英切换），安卓端构建可复现、签名校验通过。网页版已上线，手机浏览器直接打开即可，无需安装；安卓包见上表或 Release。行情接口在部分网络环境需要代理，连不上时页面保留上次数据并标注离线时间。
+
+雅思一本通 0.2.1 提供基础学习、专项训练、错题复习和按近期薄弱项组卷，做题期间可自由切换页面。10,000 条题库记录以程序生成变体为主，并非 10,000 道独立真题；分数为学习参考。安卓测试包已编译并校验签名，尚待手机实测。
 
 ## 目录结构
 
@@ -31,6 +34,12 @@ goodAPP/
     ├── cutlogo-apps/        # 净片 CleanClip：手机端 + 电脑端 + 在线体验
     │   ├── apps/cleanclip/  # Android / Python / 网页源码
     │   └── dist/            # 当前 APK
+    ├── studyen/             # 雅思一本通：本地网页 + Android 离线练习
+    │   ├── dist/            # 网页源码、题库与 downloads/APK
+    │   ├── android/         # Android 工程
+    │   ├── scripts/         # 题库生成、测试与构建脚本
+    │   ├── docs/            # 架构、题库与安卓说明
+    │   └── README.md        # 使用与开发入口
     └── crypto-pulse/        # 币市脉搏：网页 + Android 壳
         ├── css/ js/ icons/  # 前端源码与 PWA 资源
         ├── android/         # 安卓壳工程与免 Gradle 构建脚本

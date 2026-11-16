@@ -39,7 +39,7 @@
 <link rel="apple-touch-icon" href="icons/icon-apple-180.png">
 <link rel="preconnect" href="https://api.binance.com">
 <link rel="preconnect" href="https://bin.bnbstatic.com">
-<link rel="stylesheet" href="css/style.css?v=20261103k">
+<link rel="stylesheet" href="css/style.css?v=20261116d">
 <script>
 /* 运行时错误收集：便于自检，也方便用户反馈问题 */
 window.__errs = [];
@@ -85,7 +85,7 @@ window.__errs = [];
     </svg>
     <div class="brand-text">
       <h1>币市脉搏</h1>
-      <p>BINANCE · 成交额 TOP 500 实时分析</p>
+      <p>多源聚合 · 成交额 TOP 500 实时分析</p>
     </div>
   </div>
 
@@ -243,7 +243,7 @@ window.__errs = [];
   </section>
 
   <footer class="site-foot">
-    <p>数据源：Binance 现货公开行情接口（REST 快照 + WebSocket 增量推送）· 市值与名称来自 CoinGecko · 图标来自 Binance 官方 CDN</p>
+    <p>实时行情：Binance / OKX / Bybit / Gate；历史图表另支持 Bitget / HTX / KuCoin。市值与名称来自 CoinGecko，接口可用性取决于网络及跨域策略。</p>
     <p>本页面仅作行情分析展示，不构成任何投资建议。加密资产价格波动剧烈，请自行判断风险。</p>
   </footer>
 
@@ -266,7 +266,27 @@ window.__errs = [];
     <strong id="dPrice">--</strong>
     <span id="dChange" class="chg-pill">--</span>
   </div>
-  <div class="drawer-chart"><canvas id="dChart" height="180"></canvas></div>
+  <section class="drawer-chart" id="historyPanel" aria-label="历史行情图表">
+    <div class="chart-periods" aria-label="行情周期">
+      <button data-period="time" aria-pressed="true">分时</button><button data-period="five" aria-pressed="false">五日</button>
+      <button data-period="day" aria-pressed="false">日K</button><button data-period="week" aria-pressed="false">周K</button>
+      <button data-period="month" aria-pressed="false">月K</button><button data-period="m15" aria-pressed="false">15分</button><button data-period="hour" aria-pressed="false">小时</button>
+    </div>
+    <div class="chart-options">
+      <div class="chart-mode"><button data-chart-mode="line" aria-pressed="true">折线</button><button data-chart-mode="candle" aria-pressed="false">K线</button></div>
+      <label><input id="chartMA" type="checkbox" checked>均线</label>
+      <select id="chartIndicator" aria-label="图表指标"><option value="volume">成交量</option><option value="macd">MACD</option><option value="rsi">RSI</option></select>
+    </div>
+    <div class="chart-detail" id="chartDetail">暂无 OHLCV 数据</div>
+    <div class="chart-legend" id="chartLegend"></div>
+    <canvas id="dChart" height="330" tabindex="0" role="img" aria-label="历史行情曲线"></canvas>
+    <div class="chart-navigation"><button data-chart-action="left" aria-label="更早行情">‹</button><button data-chart-action="in" aria-label="放大图表">＋</button><span id="chartWindow"></span><button data-chart-action="out" aria-label="缩小图表">−</button><button data-chart-action="right" aria-label="较新行情">›</button></div>
+    <div class="chart-feed"><select id="chartSource" aria-label="历史行情来源"><option value="auto">自动 · 多路优选</option><option value="binance">Binance</option><option value="okx">OKX</option><option value="bybit">Bybit</option><option value="gate">Gate</option><option value="bitget">Bitget</option><option value="htx">HTX</option><option value="kucoin">KuCoin</option></select><button id="chartRetry">重试</button></div>
+    <div class="chart-status" id="chartStatus" role="status">正在尝试多路行情源…</div>
+    <div class="chart-timestamp" id="chartTimestamp"></div>
+    <details class="chart-diagnostics"><summary>连接诊断</summary><pre id="chartDiagnostics">尚未请求</pre></details>
+    <div class="chart-note">分时为最近24小时（5分钟采样），五日为滚动5天。MA5/10/20 按K线根数计算。成交量以当前交易所为准；日周月边界依交易所口径，合成月K采用UTC。历史不足时显示可用区间。</div>
+  </section>
   <div class="drawer-stats" id="dStats"></div>
   <div class="drawer-sources" id="dSources"></div>
   <div class="drawer-actions">
@@ -276,14 +296,16 @@ window.__errs = [];
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="js/i18n.js?v=20261103k"></script>
-<script src="js/snap.js?v=20261103k"></script>
-<script src="js/config.js?v=20261103k"></script>
-<script src="js/watch.js?v=20261103k"></script>
-<script src="js/datafeed.js?v=20261103k"></script>
-<script src="js/analytics.js?v=20261103k"></script>
-<script src="js/render.js?v=20261103k"></script>
-<script src="js/app.js?v=20261103k"></script>
-<script src="js/pwa.js?v=20261103k"></script>
+<script src="js/i18n.js?v=20261116c"></script>
+<script src="js/snap.js?v=20261116c"></script>
+<script src="js/config.js?v=20261116c"></script>
+<script src="js/history.js?v=20261116c"></script>
+<script src="js/history-chart.js?v=20261116c"></script>
+<script src="js/watch.js?v=20261116c"></script>
+<script src="js/datafeed.js?v=20261116c"></script>
+<script src="js/analytics.js?v=20261116c"></script>
+<script src="js/render.js?v=20261116c"></script>
+<script src="js/app.js?v=20261116c"></script>
+<script src="js/pwa.js?v=20261116c"></script>
 </body>
 </html>

@@ -15,6 +15,8 @@
 
 ## 功能要点
 
+- **多源历史图表（1.1.0）**：7 家交易所历史接口，自动回退与手动选源；分时、五日、15分钟、小时、日K、周K、月K；MA5/10/20、成交量、MACD、RSI、缩放和光标查看。接口失败时保留带来源和时间的历史缓存。详见 [升级与验证记录](HISTORY-UPGRADE.md)。
+
 - **实时行情**：REST 5 秒快照打底，Binance WebSocket 推送覆盖价格与涨跌幅；主站连不上时按 `data-api.binance.vision` → `api1` ～ `api4` 顺序回退。
 - **竖屏可用**：手机宽度下自动收成 5 列（币名 / 价格 / 涨跌幅 / 成交额 / 涨跌额），上线天数改为行内角标，不横向滚动。
 - **自选**：主站顶栏「自选」、新币页左侧标签都能进；不在当前池里的币（如 BTC、SOL）会按需单独补查价格，不会只显示币名。
@@ -27,7 +29,7 @@
 
 **网页版（免安装，手机浏览器直接打开）**：https://crypto-pulse-87453.app.workbuddy.host/?sharecode=HBNRIO22TM
 
-**安卓 App**：[下载 CryptoPulse 1.0.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.0.0.apk) · SHA-256 见 [dist/SHA256.txt](dist/SHA256.txt) · 备用：[发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0)
+**安卓 App**：[下载 CryptoPulse 1.1.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.1.0.apk) · SHA-256 见 [校验文件](dist/CryptoPulse-1.1.0.sha256) · 历史版本：[1.0.0 发布页](https://github.com/delltom2000/goodAPP/releases/tag/crypto-pulse-v1.0.0)
 
 支持 Android 8.0 及以上（minSdk 26），已用 v2 + v3 方案签名，大小 1.2 MB。
 
@@ -35,7 +37,7 @@
 2. 打开「币市脉搏」，首次加载会拉一次全量行情，约 2 秒出表。
 3. 行情接口在部分网络环境下需要代理；连不上时页面保留上次数据并标注离线时间，不会白屏。
 
-安装包使用本项目测试签名。仓库不包含签名密钥（`*.jks` 已忽略），自行构建会生成新密钥，覆盖安装前需先卸载旧版。
+1.1.0 沿用仓库 1.0.0 的签名，可直接覆盖升级并保留原有数据。仓库不包含签名密钥（`*.jks` 已忽略），自行构建会生成新密钥，覆盖安装前需先卸载旧版。
 
 ### 自己跑一份网页版
 
@@ -89,7 +91,7 @@ crypto-pulse/
 安卓端是一个 WebView 壳，但有两点和常见做法不同：
 
 - **不通过 Gradle 构建**：`aapt2 compile → link → javac → d8 → zipalign → apksigner` 全流程在 `android/build.sh` 里，只需要 JDK 17 和 Android SDK（platform 34 + build-tools 34.0.0）。
-- **网页资源编进 dex**：部分机型（实测 HONOR Android 16）的 `AssetManager` 挂不上本 APK 的 assets 路径，`getAssets().open()` 直接 `FileNotFoundException`，真机白屏。`tools/gen_bundle.py` 把 21 个文本资源打包成 `count + [nameLen,name,dataLen,data]`，gzip 后 base64 切块写进 `WebBundle.java`，由 `shouldInterceptRequest` 直接从内存返回，彻底绕开 AssetManager。
+- **网页资源编进 dex**：部分机型（实测 HONOR Android 16）的 `AssetManager` 挂不上本 APK 的 assets 路径，`getAssets().open()` 直接 `FileNotFoundException`，真机白屏。`tools/gen_bundle.py` 把 23 个文本资源打包成 `count + [nameLen,name,dataLen,data]`，gzip 后 base64 切块写进 `WebBundle.java`，由 `shouldInterceptRequest` 直接从内存返回，彻底绕开 AssetManager。
 
 构建：
 
@@ -98,15 +100,24 @@ crypto-pulse/
 TC=/path/to/toolchain bash android/build.sh
 ```
 
-产物落在 `dist/CryptoPulse-1.0.0.apk`，脚本末尾会自己验签并检查 `MainActivity`、`WebBundle` 是否真的进了 dex。
+产物落在 `dist/CryptoPulse-1.1.0.apk`，脚本末尾会自己验签并检查 `MainActivity`、`WebBundle` 是否真的进了 dex。
+
+Windows 可用 PowerShell 构建：
+
+```powershell
+# 设置 CRYPTO_STORE_PASSWORD / CRYPTO_KEY_PASSWORD 环境变量，不写入源码
+./android/build.ps1 -ToolchainRoot /path/to/toolchain -SigningKeystore /path/to/release.jks
+```
+
+网页版可执行 `./tools/stage-web.ps1`；回归测试执行 `node tests/candles.test.cjs`（15 项）。
 
 ### 已验证
 
-- 构建可复现：21 个文本资源打包后逐个 MD5 比对一致，dex 137 KB，APK 1.2 MB。
+- 1.1.0 构建校验：23 个文本资源逐文件比对一致，dex 148,228 B，APK 1,253,065 B。
 - 签名：apksigner 校验通过，v2 + v3。
 - 竖屏 390px：表格 5 列对齐、无横向溢出、`EN` 吸附右上角。
 - 断网：主站 120 行 / 新币 50 项保留，显示「离线数据 · HH:MM」，控制台零错误。
-- 资源解包与路径映射：JVM 下 20ms 解出 21 个文件，逐文件 MD5 与源目录一致；路径映射 11 个用例全部正确（含去 query、去 hash、拦截 `..` 穿越）。
+- 资源解包与路径映射：JVM 下本次 15ms 解出 23 个文件，逐文件 MD5 与源目录一致；路径映射 11 个用例全部正确（含去 query、去 hash、拦截 `..` 穿越）。
 
 ### 已知限制
 

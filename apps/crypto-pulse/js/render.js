@@ -652,7 +652,7 @@ const Render = (() => {
   }
 
   /* 各交易所成交额构成：体现「跨所聚合」的数据来源 */
-  const EX_COLOR = { binance: '#f0b90b', okx: '#4fa8ff', bybit: '#ff8f3f', gate: '#8b5cf6' };
+  const EX_COLOR = { binance: '#f0b90b', okx: '#4fa8ff', bybit: '#ff8f3f', gate: '#8b5cf6', bitget: '#28c6c5', htx: '#4f75dc' };
 
   function renderSources(coin) {
     const entries = Object.entries(coin.src || {})
@@ -687,93 +687,11 @@ const Render = (() => {
     el.drawer.hidden = true;
     el.drawerMask.hidden = true;
     drawerBase = null;
+    HistoryChart.close();
   }
 
-  async function loadDrawerChart(coin) {
-    const { ctx, w, h } = setupCanvas(el.dChart, 180);
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(152,163,179,.7)';
-    ctx.font = '11px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('加载走势…', w / 2, h / 2);
-
-    try {
-      const candles = await DataFeed.fetchCandles(coin);
-      if (!candles || candles.length < 2) throw new Error('empty');
-      if (drawerBase !== coin.base) return;   // 期间切换了币种
-      drawLineChart(candles, ctx, w, h, coin);
-    } catch (e) {
-      console.warn('[drawer-chart]', e && e.message);
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = 'rgba(152,163,179,.7)';
-      ctx.font = '11px system-ui';
-      ctx.textAlign = 'center';
-      ctx.fillText('走势数据暂不可用', w / 2, h / 2);
-      if (window.__pushErr) window.__pushErr('chart: ' + (e && e.message));
-    }
-  }
-
-  function drawLineChart(points, ctx, w, h, coin) {
-    ctx.clearRect(0, 0, w, h);
-
-    const padL = 8, padR = 8, padT = 16, padB = 20;
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
-
-    const prices = points.map(p => p.c);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const span = max - min || 1;
-
-    const x = i => padL + (i / (points.length - 1)) * plotW;
-    const y = v => padT + plotH - ((v - min) / span) * plotH;
-
-    const rising = prices[prices.length - 1] >= prices[0];
-    const color = rising ? palette.up : palette.down;
-
-    // 水平参考线
-    ctx.strokeStyle = 'rgba(255,255,255,.05)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 3; i++) {
-      const yy = padT + plotH * (i / 3);
-      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w - padR, yy); ctx.stroke();
-    }
-
-    // 面积填充
-    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-    grad.addColorStop(0, hexA(color, 0.28));
-    grad.addColorStop(1, hexA(color, 0));
-
-    ctx.beginPath();
-    ctx.moveTo(x(0), padT + plotH);
-    points.forEach((p, i) => ctx.lineTo(x(i), y(p.c)));
-    ctx.lineTo(x(points.length - 1), padT + plotH);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // 折线
-    ctx.beginPath();
-    points.forEach((p, i) => { i === 0 ? ctx.moveTo(x(i), y(p.c)) : ctx.lineTo(x(i), y(p.c)); });
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.8;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    // 末端点
-    const lx = x(points.length - 1), ly = y(prices[prices.length - 1]);
-    ctx.beginPath();
-    ctx.arc(lx, ly, 3, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-
-    // 最高/最低标注
-    ctx.fillStyle = 'rgba(152,163,179,.8)';
-    ctx.font = '9px ui-monospace, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(fmtPrice(max), padL, padT - 5);
-    ctx.textAlign = 'right';
-    ctx.fillText(fmtPrice(min), w - padR, padT + plotH + 13);
+  function loadDrawerChart(coin) {
+    HistoryChart.show(coin);
   }
 
   function hexA(hex, a) {
@@ -844,7 +762,7 @@ const Render = (() => {
     openDrawer, closeDrawer, toast,
     letterAvatar, imgSrcBinance,
     getDrawerBase: () => drawerBase,
-    redrawCharts: (m) => { if (m) drawHistogram(m.histogram); if (drawerBase) { const c = DataFeed.getCoin(drawerBase); if (c) loadDrawerChart(c); } },
+    redrawCharts: (m) => { if (m) drawHistogram(m.histogram); if (drawerBase) { const c = DataFeed.getCoin(drawerBase); if (c) HistoryChart.redraw(); } },
   };
 
 })();

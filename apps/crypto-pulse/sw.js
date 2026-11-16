@@ -6,7 +6,7 @@
      跨域请求      不拦截，交易所 API 必须直连拿实时数据
    ========================================================================== */
 
-const VERSION = 'cp-v2';
+const VERSION = 'cp-v6-history';
 const SHELL_CACHE = 'cp-shell-' + VERSION;
 const RUNTIME_CACHE = 'cp-runtime-' + VERSION;
 
@@ -19,6 +19,11 @@ const SHELL = [
   './css/newcoins.css',
   './js/config.js',
   './js/datafeed.js',
+  './js/history.js',
+  './js/history-chart.js',
+  './js/snap.js',
+  './js/quote.js',
+  './js/i18n.js',
   './js/analytics.js',
   './js/render.js',
   './js/app.js',

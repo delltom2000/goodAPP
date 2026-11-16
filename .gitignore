@@ -21,3 +21,11 @@ Thumbs.db
 
 # 网页版发布用的纯静态目录（由 apps/crypto-pulse/tools/stage-web.sh 生成）
 web-dist/
+
+# Crypto Pulse generated build artifacts (signed APKs under dist/ are intentional)
+apps/crypto-pulse/android/build-*/
+apps/crypto-pulse/android/app/src/main/assets/www/
+apps/crypto-pulse/android/app/src/main/java/com/niulai/crypto/WebBundle.java
+.local/
+CryptoPulse-web-local.zip
+DOWNLOAD-INFO.json

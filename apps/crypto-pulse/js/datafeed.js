@@ -499,41 +499,10 @@ const DataFeed = (() => {
     state.wsState = 'offline';
   }
 
-  /* ---------------- 详情走势（15 分钟 × 96 = 24 小时） ---------------- */
+  /* 历史行情由独立多源 OHLCV 层提供，保留旧调用接口。 */
   async function fetchCandles(coin) {
-    const LIMIT = 96;
-    const src = coin.src || {};
-
-    if (src.binance) {
-      try {
-        const k = await fetchJSON(
-          `https://api.binance.com/api/v3/klines?symbol=${coin.base}USDT&interval=15m&limit=${LIMIT}`, 8000);
-        if (Array.isArray(k) && k.length > 1) {
-          return k.map(x => ({ t: +x[0], c: +x[4] }));
-        }
-      } catch {}
-    }
-    if (src.okx) {
-      try {
-        const j = await fetchJSON(
-          `https://www.okx.com/api/v5/market/candles?instId=${coin.base}-USDT&bar=15m&limit=${LIMIT}`, 8000);
-        const d = (j && j.data) || [];
-        if (d.length > 1) {
-          return d.map(x => ({ t: +x[0], c: +x[4] })).reverse();   // OKX 为倒序
-        }
-      } catch {}
-    }
-    if (src.bybit) {
-      try {
-        const j = await fetchJSON(
-          `https://api.bybit.com/v5/market/kline?category=spot&symbol=${coin.base}USDT&interval=15&limit=${LIMIT}`, 8000);
-        const d = (j && j.result && j.result.list) || [];
-        if (d.length > 1) {
-          return d.map(x => ({ t: +x[0], c: +x[4] })).reverse();
-        }
-      } catch {}
-    }
-    return null;
+    const value = await History.load(coin, 'time');
+    return value.points.length > 1 ? value.points : null;
   }
 
   /* ---------------- 对外接口 ---------------- */

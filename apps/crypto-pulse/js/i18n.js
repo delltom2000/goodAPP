@@ -9,6 +9,10 @@
 
   var EN = {
     /* ---------- 通用 / 导航 ---------- */
+    '多源聚合 · 成交额 TOP 500 实时分析': 'MULTI-SOURCE · TOP 500 BY VOLUME · LIVE',
+    '分时': 'Intraday', '五日': '5 days', '日K': 'Daily', '周K': 'Weekly', '月K': 'Monthly',
+    '15分': '15m', '小时': '1h', '折线': 'Line', 'K线': 'Candles', '均线': 'MA',
+    '成交量': 'Volume', '自动 · 多路优选': 'Auto · Multi-source', '连接诊断': 'Connection details',
     '币市脉搏': 'Coin Pulse',
     '市场脉搏': 'Markets',
     '新币雷达': 'New Coins',

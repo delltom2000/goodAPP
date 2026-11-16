@@ -22,7 +22,7 @@ JAR=$JDK/bin/jar
 [ -x "$JAVA.exe" ] && { JAVA=$JAVA.exe; JAVAC=$JAVAC.exe; KEYTOOL=$KEYTOOL.exe; JAR=$JAR.exe; } || true
 
 APP_NAME=CryptoPulse
-VERSION=1.0.0
+VERSION=1.1.0
 DIST=$ROOT/dist
 mkdir -p "$DIST"
 EXE=""

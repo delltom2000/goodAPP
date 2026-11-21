@@ -4,10 +4,7 @@ import argparse
 from pathlib import Path
 
 
-WINDOWS_URL = (
-    "https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/"
-    "releases/Xread-Web-2.2-Windows-x64.zip?download=true"
-)
+WINDOWS_URL = "https://dellweb3-translateall.hf.space/download/windows"
 
 NOTICE = f"""<aside class="space-notice" aria-label="在线版文件保存说明">
         <div><strong>在线版 · 免费 CPU</strong>

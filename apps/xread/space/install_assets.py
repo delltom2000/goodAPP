@@ -11,11 +11,12 @@ import time
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 import zipfile
+from upgrade_archive import restore
 
 
 manifest = json.loads(Path(__file__).with_name("release.json").read_text(encoding="utf8"))
 DIGEST, SIZE = manifest["sha256"], manifest["size"]
-URL = "https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/" + manifest["file"] + "?download=true"
+RELEASES = "https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/"
 DEMO = {"captions.srt", "dubbed.mp4", "source.mp4"}
 PREVIEW = re.compile(r"voice-[a-z_]+-(?:standard|fast)(?:-speech|-sweet)?\.mp3")
 
@@ -41,27 +42,36 @@ def extract(archive, destination):
                         shutil.copyfileobj(source, output, length=1024 * 1024)
 
 
-def install(archive, destination):
-    if archive.exists():
-        if archive.stat().st_size > 4096:
-            extract(archive, destination)
-            return
-        pointer = archive.read_text(encoding="ascii").splitlines()
-        if pointer != ["version https://git-lfs.github.com/spec/v1", f"oid sha256:{DIGEST}", f"size {SIZE}"]:
-            raise ValueError("Expected the verified release or its matching LFS pointer")
-    with tempfile.TemporaryDirectory() as work:
-        downloaded = Path(work) / "release.zip"
-        for attempt in range(3):
-            try:
-                request = Request(URL, headers={"User-Agent": "Xread-Space-build/2.2"})
-                with urlopen(request, timeout=120) as source, downloaded.open("wb") as output:
-                    shutil.copyfileobj(source, output, length=1024 * 1024)
-                extract(downloaded, destination)
-                return
-            except (URLError, TimeoutError, ConnectionError):
-                if attempt == 2:
-                    raise
-                time.sleep(2 ** attempt)
+def resolve_asset(directory, name, work):
+    local = directory / name
+    if local.is_file() and local.stat().st_size > 4096:
+        return local
+    downloaded = work / name
+    for attempt in range(3):
+        try:
+            req = Request(RELEASES + name + "?download=true", headers={"User-Agent":"Xread-Space-build/2.2"})
+            with urlopen(req, timeout=120) as source, downloaded.open("wb") as target:
+                shutil.copyfileobj(source, target, length=1024**2)
+            return downloaded
+        except (URLError, TimeoutError, ConnectionError):
+            if attempt==2:
+                raise
+            time.sleep(2**attempt)
+
+
+def install(directory, destination):
+    complete = destination / "downloads" / manifest["file"]
+    complete.parent.mkdir(parents=True, exist_ok=True)
+    provided = directory / manifest["file"]
+    if provided.is_file() and provided.stat().st_size==SIZE:
+        shutil.copyfile(provided, complete)
+    else:
+        meta=json.loads(Path(__file__).with_name("delta.json").read_text(encoding="utf8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            base=resolve_asset(directory, meta["base_file"], Path(tmp))
+            patch=resolve_asset(directory, meta["patch_file"], Path(tmp))
+            restore(base,patch,complete,meta)
+    extract(complete, destination)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Xread 2.2 中文视频译制台
 
-Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.2-Windows-x64.zip?download=true)
+Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://dellweb3-translateall.hf.space/download/windows)
 
 ## 选择使用方式
 

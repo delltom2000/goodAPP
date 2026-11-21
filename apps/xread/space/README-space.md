@@ -30,4 +30,4 @@ Space 使用免费的 CPU Basic 算力。长视频的识别、配音和转码需
 
 ## Windows 本地版
 
-要在自己的电脑上处理和保存视频，请下载 Windows x64 压缩包，完整解压后双击 `Start Xread.cmd`。浏览器会打开本机工作台，识别、翻译和配音模型随包提供。下载 X 视频需要联网，已保存的视频可以在本机离线处理。[下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.2-Windows-x64.zip?download=true) · [查看 goodAPP 项目源码](https://github.com/delltom2000/goodAPP/tree/main/apps/xread)
+要在自己的电脑上处理和保存视频，请下载 Windows x64 压缩包，完整解压后双击 `Start Xread.cmd`。浏览器会打开本机工作台，识别、翻译和配音模型随包提供。下载 X 视频需要联网，已保存的视频可以在本机离线处理。[下载 Windows x64 版](https://dellweb3-translateall.hf.space/download/windows) · [查看 goodAPP 项目源码](https://github.com/delltom2000/goodAPP/tree/main/apps/xread)

@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 from hashlib import sha256
 import hmac
+import json
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer
@@ -131,6 +132,10 @@ class SpaceHandler(server.Handler):
         return session
 
     def route_get(self, path):
+        if path == "/download/windows":
+            release=json.loads(Path(__file__).with_name("release.json").read_text(encoding="utf8"))
+            archive=Path(__file__).resolve().parents[1]/"downloads"/release["file"]
+            return self.serve(archive, release["file"])
         if path == "/":
             self.get_session(create=True)
             return super().route_get(path)

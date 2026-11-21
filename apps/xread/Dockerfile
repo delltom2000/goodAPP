@@ -11,9 +11,9 @@ RUN curl --fail --location --retry 3 \
     && /build/bin/whisper-cli --help
 
 FROM python:3.12-slim-bookworm AS assets
-COPY space/install_assets.py space/release.json /tmp/
-COPY releases/Xread-Web-2.2-Windows-x64.zip /tmp/distribution.zip
-RUN python /tmp/install_assets.py /tmp/distribution.zip /assets
+COPY space/install_assets.py space/upgrade_archive.py space/release.json space/delta.json /tmp/
+COPY releases/ /tmp/releases/
+RUN python /tmp/install_assets.py /tmp/releases /assets
 
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/Xread \
@@ -34,6 +34,7 @@ COPY Xread/*.py /app/Xread/
 COPY Xread/web/ /app/Xread/web/
 COPY Xread/licenses/ /app/Xread/licenses/
 COPY --from=assets /assets/Xread/ /app/Xread/
+COPY --from=assets /assets/downloads/ /app/downloads/
 COPY space/ /app/space/
 RUN python /app/space/prepare_web.py /app/Xread/web
 USER 1000:1000

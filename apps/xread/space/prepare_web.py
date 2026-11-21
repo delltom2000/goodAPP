@@ -6,7 +6,7 @@ from pathlib import Path
 
 WINDOWS_URL = (
     "https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/"
-    "releases/Xread-Web-2.1-Windows-x64.zip?download=true"
+    "releases/Xread-Web-2.2-Windows-x64.zip?download=true"
 )
 
 NOTICE = f"""<aside class="space-notice" aria-label="在线版文件保存说明">

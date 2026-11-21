@@ -1,6 +1,6 @@
-# Xread 2.1 中文视频译制台
+# Xread 2.2 中文视频译制台
 
-Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.1-Windows-x64.zip?download=true)
+Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.2-Windows-x64.zip?download=true)
 
 ## 选择使用方式
 
@@ -14,10 +14,17 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 
 ## 制作视频
 
-1. 每行粘贴一个 X 帖子链接，或多选本地视频，加入批量队列。「任务与历史」中会显示每条任务的排队位置、阶段和进度。
-2. 选择「原声＋中文字幕」即可保留原音轨。选择「中文配音」时，可先试听，再选全片固定的自然女声、清亮女声或男声。标准档和快速档均为 24 kHz。
-3. 在字幕文稿中点击一句即可跳到对应位置，打开「编辑」可校对中文。修改后重新生成成片，或直接导出独立字幕文件。
-4. 下载成片 MP4，也可以导出中文字幕或中英双语 SRT。云端库可能在重启、重建或清理后失效，重要文件请下载保存。
+1. 每行粘贴一个 X 帖子链接，或多选本地视频。
+2. 在女声和男声两组中选一个音色，搭配朗读风格后试听。也可以使用「青禾 · 演讲」或「小满 · 甜美」直接选定组合。标准、快速两档均为 24 kHz。
+3. 勾选「原声＋中文字幕」或「中文配音＋中文字幕」，可以双选。首次默认仅选原声。点「开始翻译」，到「任务与历史」查看每条任务的排队位置、阶段和进度。
+4. 在字幕文稿中点击一句即可定位和校对译文。勾选两版时，原声版先完成即可下载；配音完成后，可分别下载两份 MP4，也可在「导出」中选择双音轨 MP4，供 VLC 等播放器切换音轨。独立中文和中英双语 SRT 也可导出。云端任务使用临时存储，重要文件请下载保存。
+
+| 固定音色 | 名称 |
+| --- | --- |
+| 女声 | 自然女声、清亮女声、青禾女声、云舒女声、小满女声 |
+| 男声 | 男声、松言男声、云舟男声 |
+
+选好音色，再选「自然交谈」「演讲」或「甜美讲述」。所有固定音色都支持这三种朗读风格。点「试听」会播放当前音色、风格和音质对应的样音，便于用同一段话比较停顿和语气。
 
 例如，Lauren Tan 访谈本身已有双语字幕，可直接沿用原画，打开「双语对照」校对已有字幕。没有字幕的英文视频会先生成带时间轴的英文文稿，再翻译成简体中文。[示例 X 帖子](https://x.com/NoDiscoInHere/status/2115421187044225159)
 
@@ -32,4 +39,4 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 
 上表中的源码位于 `Xread/`。Windows 发布包包含运行环境、FFmpeg 和所需模型，组件来源与许可见包内的 `licenses` 和 `tools` 目录。在线版单文件上限为 512 MB，单个会话同时最多有八个待处理任务。[goodAPP 源码目录](https://github.com/delltom2000/goodAPP/tree/main/apps/xread) · [Space 项目页](https://huggingface.co/spaces/dellweb3/Translateall)
 
-在本目录使用 Docker 构建时，先把上方 Windows ZIP 下载到 `releases/Xread-Web-2.1-Windows-x64.zip`。执行 `docker build -t xread .`，然后执行 `docker run --rm -p 127.0.0.1:7860:7860 -e XREAD_SPACE_LOCAL_TEST=1 -e XREAD_CONTAINER_LOCAL=1 xread`，在浏览器访问 `http://127.0.0.1:7860`。
+在本目录使用 Docker 构建时，先把上方 Windows ZIP 下载到 `releases/Xread-Web-2.2-Windows-x64.zip`。执行 `docker build -t xread .`，然后执行 `docker run --rm -p 127.0.0.1:7860:7860 -e XREAD_SPACE_LOCAL_TEST=1 -e XREAD_CONTAINER_LOCAL=1 xread`，在浏览器访问 `http://127.0.0.1:7860`。

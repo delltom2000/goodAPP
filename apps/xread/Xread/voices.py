@@ -19,11 +19,17 @@ SAMPLE_RATE = 8000
 # Median fundamental frequency (Hz) measured on a common Mandarin phrase.
 PROFILES = {"standard": {58: 114, 61: 130, 80: 145, 22: 210, 4: 229, 32: 239, 3: 258},
             "fast": {10: 128, 102: 157, 23: 168, 38: 178, 47: 200, 99: 211, 31: 235, 33: 267}}
-# Named presets follow the published Kokoro sid table and the AISHELL-3
-# speaker metadata matched against this model's own speakers.txt ordering.
+# Kokoro publishes language and gender by speaker ID. For PaddleSpeech,
+# match speaker_id_map.txt to the AISHELL-3 corpus speaker metadata.
 FIXED_VOICES = {
-    "standard": {"female": 22, "female_clear": 32, "male": 61},
-    "fast": {"female": 47, "female_clear": 31, "male": 10},
+    "standard": {
+        "female": 22, "female_clear": 32, "female_qinghe": 20, "female_yunshu": 4,
+        "female_xiaoman": 3, "male": 61, "male_songyan": 58, "male_yunzhou": 80,
+    },
+    "fast": {
+        "female": 47, "female_clear": 31, "female_qinghe": 38, "female_yunshu": 99,
+        "female_xiaoman": 33, "male": 10, "male_songyan": 102, "male_yunzhou": 23,
+    },
 }
 
 
@@ -294,12 +300,118 @@ def _fast_word(match):
                    for part in parts)
 
 
+DELIVERY_STYLES = ("natural", "speech", "sweet")
+# Pitch offsets are in semitones and gain offsets in dB. Each number controls
+# a point *within* the phrase, at opening, accent, middle, and cadence.
+_CONTOURS = {
+    "speech": ((-0.35, 0.85, -0.15, 0.25, -0.85), (0.0, 2.2, 0.0, 1.0, -1.2)),
+    "sweet": ((0.20, 0.85, 0.30, 1.05, 0.20), (-1.4, 0.30, -0.55, 0.60, -2.1)),
+}
+_BOUNDARY = re.compile(r"[。！？；!?;]+[”」』）)]*|(?<![0-9])[，、,]+(?![0-9])"
+                       r"|(?<![A-Za-z0-9:/])[：:]+(?![/0-9])|\.(?=\s|$)")
+_TURN = re.compile(r"但是|不过|然而|因此|所以|总的来说|换句话说|更重要的是|最重要的是|关键是|也就是说")
+_FOCUS = re.compile(r"更重要的是|最重要的是|关键是|关键在于|尤其是|特别是|一定要|必须|正是|才是")
+
+
+def _sense_groups(clause, mark):
+    start = 0
+    for cue in _TURN.finditer(clause):
+        pos = cue.start()
+        if pos < start+8 or len(clause)-cue.end() < 4:
+            continue
+        # Give an unpunctuated contrast or conclusion a small breath. Leave
+        # numeric/Latin runs and lexical compounds such as “比不过” intact.
+        previous = clause[pos-1]
+        if not ("\u3400" <= previous <= "\u9fff") or sum("\u3400" <= c <= "\u9fff" for c in clause[start:pos]) < 8:
+            continue
+        if cue[0] == "不过" and previous in "逃比敌躲翻越抵信拗熬争绕瞒算只":
+            continue
+        if cue[0] == "所以" and previous == "之":
+            continue
+        yield clause[start:pos], "turn"
+        start = pos
+    yield clause[start:], mark
+
+
+def _clauses(phrase):
+    start = 0
+    for match in _BOUNDARY.finditer(phrase):
+        clause = phrase[start:match.end()].strip()
+        if any(ch.isalnum() for ch in clause):
+            yield from _sense_groups(clause, match[0][0])
+            start = match.end()
+    tail = phrase[start:].strip()
+    if any(ch.isalnum() for ch in tail):
+        yield from _sense_groups(tail, "")
+
+
+def _delivery(samples, rate, style, mark, phrase):
+    """Shape one complete model utterance, without cutting through a syllable."""
+    samples = np.asarray(samples, dtype=np.float32)
+    block = max(1, rate // 100)
+    frames = np.pad(samples, (0, (-len(samples)) % block)).reshape(-1, block)
+    energy = np.sqrt(np.mean(frames * frames, axis=1))
+    active = np.flatnonzero(energy > max(0.0008, 0.009 * energy.max()))
+    if not len(active):
+        return samples
+    # Independent model calls may include different amounts of boundary
+    # silence. Keep consonant onsets/releases and supply the pause separately.
+    samples = samples[max(0, (active[0]-3)*block):min(len(samples), (active[-1]+5)*block)]
+    indices = np.arange(len(samples), dtype=np.float64)
+    anchors = np.array([0, .24, .54, .78, 1.0])
+    focus = _FOCUS.search(phrase)
+    if focus:
+        # Emphasize the content just after “关键是” or “必须”. Span a wider
+        # region than one character because the model has no forced aligner.
+        accent = np.clip((focus.end() + 1) / len(phrase), .17, .68)
+        anchors[1:4] = (accent, accent + (1-accent)*.38, accent + (1-accent)*.73)
+    elif len(phrase) >= 12:
+        # Follow a naturally strong syllable in the first half, instead of
+        # forcing a fixed meter on statements with no explicit focus phrase.
+        mid = energy[active[0]:active[-1]+1]
+        a, b = int(len(mid)*.15), int(len(mid)*.48)
+        if b-a >= 4:
+            smooth = np.convolve(mid[a:b], np.ones(3)/3, mode="same")
+            anchors[1] = (a + np.argmax(smooth)) / len(mid)
+    anchors *= indices[-1]
+    pitch, gain = _CONTOURS[style]
+    if mark in ("？", "?"):
+        pitch = (*pitch[:-1], 0.65 if style == "speech" else 1.65)
+    elif mark in ("！", "!"):
+        pitch = (*pitch[:3], pitch[3]+.5, pitch[4]-.25)
+        gain = (*gain[:3], gain[3]+.9, gain[4]+.4)
+    elif mark in ("，", ",", "、", "：", ":", "turn"):
+        pitch = (*pitch[:-1], .35 if style == "speech" else .7)
+    tempo = np.exp2(np.interp(indices, anchors, pitch) / 12)
+    # Vary the playback rate smoothly within a clause. Cubic interpolation
+    # retains high-frequency consonants without overlap-add or spectral gates.
+    output_time = np.cumsum(1.0 / tempo)
+    output_time -= output_time[0]
+    position = np.interp(np.arange(round(output_time[-1]) + 1), output_time, indices)
+    left = position.astype(np.intp)
+    fraction = position - left
+    padded = np.pad(samples, (1, 2), mode="edge")
+    a, b, c, d = (padded[left + k] for k in range(4))
+    shaped = b + .5*fraction*((c-a) + fraction*((2*a-5*b+4*c-d) + fraction*(3*(b-c)+d-a)))
+    shaped *= 10 ** (np.interp(position, anchors, gain) / 20)
+    fade = min(len(shaped)//2, round(rate * .008))
+    if fade:
+        envelope = np.sin(np.linspace(0, np.pi/2, fade))**2
+        shaped[:fade] *= envelope
+        shaped[-fade:] *= envelope[::-1]
+    shaped *= min(1.0, .96 / max(.001, np.max(np.abs(shaped))))
+    return shaped.astype(np.float32)
+
+
 class Synthesizer:
-    def __init__(self, voice="female", source=None, rows=(), quality="standard"):
+    def __init__(self, voice="female", source=None, rows=(), quality="standard", style="natural"):
         if quality not in PROFILES:
             raise ValueError("请选择标准或快速配音。")
         if voice not in (*FIXED_VOICES[quality], "auto", "low", "high"):
-            raise ValueError("请选择自然女声、明亮女声或男声。")
+            raise ValueError("请选择列表中的配音音色。")
+        if style not in DELIVERY_STYLES:
+            raise ValueError("请选择自然交谈、演讲或甜美讲述。")
+        self.style = style
         self.quality = quality
         self.model = _load_tts(quality)
         profiles = PROFILES[quality]
@@ -317,7 +429,11 @@ class Synthesizer:
         rate = self.model.sample_rate
         spoken = re.sub("[A-Za-z]+", _fast_word if self.quality == "fast" else _pronounce_word,
                         " ".join(text.split()))
-        for phrase in _phrases(spoken):
+        chunks = ((phrase, "") for phrase in _phrases(spoken))
+        if self.style != "natural":
+            chunks = (chunk for phrase in _phrases(spoken) for chunk in _clauses(phrase))
+        previous_mark = ""
+        for phrase, mark in chunks:
             if not any(ch.isalnum() for ch in phrase):
                 continue
             if self.quality == "fast":
@@ -326,6 +442,13 @@ class Synthesizer:
                 audio = self.model.generate(phrase, sid=sid, speed=1.0)
                 waveform = np.asarray(audio.samples, dtype=np.float32)
             if len(waveform):
+                if self.style != "natural":
+                    waveform = _delivery(waveform, rate, self.style, mark, phrase)
+                    if samples:
+                        major = previous_mark in ("。", "！", "？", ".", "!", "?", "；", ";")
+                        pause = (.21 if major else .115) if self.style == "speech" else (.13 if major else .075)
+                        samples.append(np.zeros(round(rate * pause), dtype=np.float32))
+                    previous_mark = mark
                 samples.append(waveform)
         if not samples or not any(np.any(wave) for wave in samples):
             return rate, np.zeros(rate // 10, dtype=np.float32)

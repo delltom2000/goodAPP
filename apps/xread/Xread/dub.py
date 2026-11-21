@@ -13,7 +13,6 @@ import unicodedata
 import wave
 from contextlib import contextmanager
 from pathlib import Path
-from uuid import uuid4
 
 import numpy as np
 
@@ -358,14 +357,9 @@ def _video_info(info):
 @contextmanager
 def _workspace(folder):
     folder.mkdir(parents=True, exist_ok=True)
-    tmp = folder / (".dub-" + uuid4().hex)
-    tmp.mkdir()
-    try:
-        yield tmp
-    finally:
-        for name in ("dubbing.wav", "zh.srt", "zh.vtt", "bilingual.srt", "bilingual.vtt", "render.mp4"):
-            (tmp / name).unlink(missing_ok=True)
-        tmp.rmdir()
+    # Keep the staging name short in nested Windows history and voice/style folders.
+    with tempfile.TemporaryDirectory(dir=folder, prefix=".d-") as temp:
+        yield Path(temp)
 
 
 def _line_limit(width, height):
@@ -399,7 +393,8 @@ def render_original(source: Path, rows: list, folder: Path, progress, burned_cap
 
 
 def render(source: Path, rows: list, folder: Path, voice: str, progress,
-           burned_captions: bool = False, cache_dir: Path | None = None, quality: str = "standard") -> Path:
+           burned_captions: bool = False, cache_dir: Path | None = None, quality: str = "standard",
+           style: str = "natural") -> Path:
     import voices
 
     source, folder = Path(source).resolve(), Path(folder).resolve()
@@ -409,6 +404,8 @@ def render(source: Path, rows: list, folder: Path, voice: str, progress,
         raise ValueError("请从原视频创建配音。")
     if quality not in ("standard", "fast"):
         raise ValueError("请选择标准音质或快速配音。")
+    if style not in voices.DELIVERY_STYLES:
+        raise ValueError("请选择自然交谈、演讲或甜美讲述。")
     progress(0, "正在准备中文配音")
     duration, w, h, codec = _video_info(media.probe(source))
     cues = _get_cues(rows, duration)
@@ -417,10 +414,12 @@ def render(source: Path, rows: list, folder: Path, voice: str, progress,
     def get_synth():
         nonlocal synth
         if synth is None:
-            synth = voices.Synthesizer(voice, source, cues, quality=quality)
+            synth = voices.Synthesizer(voice, source, cues, quality=quality, style=style)
         return synth
     profiles = getattr(voices, "CACHE_PROFILES", {"standard": "kokoro-v1.1-fixed-v1", "fast": "vits-8k"})
     identity = (CACHE_VERSION, str(source), stat.st_size, stat.st_mtime_ns, voice, quality, profiles[quality])
+    if style != "natural":
+        identity += ("delivery-v1", style)
     cache = Path(cache_dir).resolve() if cache_dir is not None else folder / "voice-cache"
     cache.mkdir(exist_ok=True, parents=True)
     clips = []

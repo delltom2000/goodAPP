@@ -20,6 +20,7 @@ import uuid
 import webbrowser
 
 import media
+from voices import DELIVERY_STYLES, FIXED_VOICES
 
 ROOT = Path(__file__).resolve().parent
 LIBRARY = Path(os.environ.get("XREAD_LIBRARY") or
@@ -33,9 +34,10 @@ caption_scan = ThreadPoolExecutor(max_workers=1, thread_name_prefix="caption-che
 state_lock = RLock()
 file_locks = {}
 pending = []
-VERSION = "2.1"
+VERSION = "2.2"
+RENDER_VERSION = "2.1"
 DEFAULT_VOICE = "female"
-VOICES = {"female", "female_clear", "male", "auto", "low", "high"}
+VOICES = {"auto", "low", "high", *FIXED_VOICES["standard"]}
 
 
 def read(path):
@@ -83,8 +85,8 @@ def public(job):
     item["progress"] = job.get("progress", 100 if job["status"] == "ready" else 0)
     item["dub"] = {**dict(status="none", progress=0, message="", voice=job.get("autoVoice") or DEFAULT_VOICE,
                           quality=job.get("autoQuality", "standard"), captionMode=item["captionMode"],
-                          audioMode=job.get("audioMode", "dubbed")),
-                   **{k:v for k,v in job.get("dub", {}).items() if k in {"status","progress","message","voice","quality","captionMode","audioMode"}}}
+                          audioMode=job.get("audioMode", "dubbed"), style=job.get("autoStyle", "natural")),
+                   **{k:v for k,v in job.get("dub", {}).items() if k in {"status","progress","message","voice","quality","captionMode","audioMode","style","originalReady"}}}
     with state_lock:
         item["queuePosition"] = next((i for i, (_, identifier) in enumerate(pending, 1)
                                      if identifier == job["id"]), 0)
@@ -115,16 +117,18 @@ def quality_name(value):
 
 
 def audio_mode(value):
-    if value not in ("original", "dubbed"):
-        raise ValueError("请选择原声或中文配音。")
+    if value not in ("original", "dubbed", "both"):
+        raise ValueError("请至少选择一种成片声音。")
     return value
 
 
-def sound_options(sound, voice, quality):
+def sound_options(sound, voice, quality, style="natural"):
     sound = audio_mode(sound)
     if sound == "original":
-        return sound, DEFAULT_VOICE, "standard"
-    return sound, voice_name(voice), quality_name(quality)
+        return sound, DEFAULT_VOICE, "standard", "natural"
+    if style not in DELIVERY_STYLES:
+        raise ValueError("请选择自然交谈、演讲或甜美讲述。")
+    return sound, voice_name(voice), quality_name(quality), style
 
 
 def caption_mode(value):
@@ -157,23 +161,26 @@ def inspect_history(folder):
         update(folder, captionCheckError=str(exc)[:250])
 
 
-def new_dub(job, voice, quality="standard", mode=None, sound=None):
+def new_dub(job, voice, quality="standard", mode=None, sound=None, style="natural"):
     sound = sound or job.get("audioMode", "dubbed")
-    message = "等待制作原声字幕版" if sound == "original" else "等待生成中文配音"
+    message = {"original":"等待制作原声字幕版", "dubbed":"等待生成中文配音", "both":"等待制作原声和配音两版"}[sound]
     return dict(status="queued", message=message, progress=0, voice=voice, quality=quality, audioMode=sound,
-                renderVersion=VERSION,
+                renderVersion=RENDER_VERSION, style=style,
                 captionMode=mode or job.get("captionMode", "auto"),
                 revision=job.get("revision", "."), ticket=uuid.uuid4().hex)
 
 
 def film_folder(folder, dub):
-    style = "picture" if dub.get("picture") else "subtitled"
+    captions = "picture" if dub.get("picture") else "subtitled"
     renders = folder / dub["revision"] / "renders"
     if dub.get("audioMode") == "original":
-        return renders / "original" / style
+        return renders / "original" / captions
     if dub.get("renderVersion"):
         renders = renders / dub["renderVersion"]
-    return renders / dub["voice"] / dub.get("quality", "standard") / style
+    audio = renders / dub["voice"] / dub.get("quality", "standard")
+    if dub.get("style", "natural") != "natural":
+        audio = audio / dub["style"]
+    return audio / captions
 
 
 class Superseded(Exception):
@@ -181,8 +188,8 @@ class Superseded(Exception):
 
 
 def run_dub(folder, request):
-    original = request.get("audioMode") == "original"
-    final_message = "原声字幕成片已就绪" if original else "中文配音成片已就绪"
+    sound = request.get("audioMode", "dubbed")
+    final_message = {"original":"原声字幕成片已就绪", "dubbed":"中文配音成片已就绪", "both":"原声和中文配音成片均已就绪"}[sound]
     def persist(**change):
         with state_lock:
             job = read(folder / "job.json")
@@ -192,29 +199,36 @@ def run_dub(folder, request):
             return update(folder, dub={**current, **change})
     def report(percent, message):
         nonlocal final_message
-        if percent >= 100:
+        if percent >= 100 and sound != "both":
             final_message = message
         persist(progress=max(0, min(99, int(percent))), message=message)
     try:
-        job = persist(status="working", message="正在准备原声字幕版" if original else "正在准备中文音轨")
+        job = persist(status="working", message="正在准备成片")
         rows = read(folder / request["revision"] / "cues.json")
         job = inspect_picture(folder, job, folder / job["preview"], rows)
         picture = public(job)["burnedCaptions"]
         request = {**request, "picture":picture}
         persist(picture=picture)
-        output = film_folder(folder, request)
-        output.mkdir(parents=True, exist_ok=True)
-        if not (output / "dubbed.mp4").is_file():
-            import dub
-            if original:
-                dub.render_original(folder / job["preview"], rows, output, report, burned_captions=picture)
-            else:
-                dub.render(folder / job["preview"], rows, output, request["voice"], report,
+        import dub
+        source = folder / job["preview"]
+        if sound in {"original", "both"}:
+            output = film_folder(folder, {**request, "audioMode":"original"})
+            if not (output / "dubbed.mp4").is_file():
+                original_progress = (lambda pct, msg: report(.25*pct, msg)) if sound == "both" else report
+                dub.render_original(source, rows, output, original_progress, burned_captions=picture)
+            if not (output / "dubbed.mp4").is_file():
+                raise ValueError("原声字幕版未生成，请重试。")
+            persist(originalReady=True)
+        if sound in {"dubbed", "both"}:
+            output = film_folder(folder, request)
+            if not (output / "dubbed.mp4").is_file():
+                voice_progress = (lambda pct, msg: report(25+.75*pct, msg)) if sound == "both" else report
+                dub.render(source, rows, output, request["voice"], voice_progress,
                            burned_captions=picture,
                            cache_dir=folder / "voice-cache" / request["voice"] / request["quality"],
-                           quality=request["quality"])
-        if not (output / "dubbed.mp4").is_file():
-            raise ValueError("配音引擎没有生成视频文件。")
+                           quality=request["quality"], style=request.get("style", "natural"))
+            if not (output / "dubbed.mp4").is_file():
+                raise ValueError("中文配音版未生成，请重试。")
         persist(status="ready", progress=100, message=final_message)
     except Superseded:
         return
@@ -293,7 +307,8 @@ def process(folder):
             report("正在保存时间轴和中文字幕")
             media.write_subtitles(rows, folder)
             save(folder / "cues.json", rows)
-            request = new_dub(job, job["autoVoice"], job.get("autoQuality", "standard")) if job.get("autoVoice") else None
+            request = new_dub(job, job["autoVoice"], job.get("autoQuality", "standard"),
+                              style=job.get("autoStyle", "natural")) if job.get("autoVoice") else None
             update(folder, count=len(rows), status="ready", progress=100, message="字幕已就绪",
                    **({"dub":request} if request else {}))
         if request:
@@ -315,7 +330,7 @@ def initialize(library=None):
                 enqueue(path.parent, process)
         elif job.get("dub", {}).get("status") in {"queued", "working"}:
             request = new_dub(job, job["dub"]["voice"], job["dub"].get("quality", "standard"),
-                              sound=job["dub"].get("audioMode", "dubbed"))
+                              sound=job["dub"].get("audioMode", "dubbed"), style=job["dub"].get("style", "natural"))
             update(path.parent, dub=request)
             enqueue(path.parent, run_dub, request)
         elif job["status"] == "ready" and not known_picture(job) and "visualCaptions" not in job:
@@ -466,6 +481,25 @@ class Handler(BaseHTTPRequestHandler):
                 if public(job)["burnedCaptions"]:
                     return self.serve(picture_preview(folder, job))
                 return self.serve(folder / job["preview"])
+            if name in {"original-film.mp4", "original-film-download.mp4"}:
+                film = job.get("dub", {})
+                available = film.get("originalReady") or (film.get("audioMode") == "original" and film.get("status") == "ready")
+                if not available or film.get("revision") != job.get("revision", "."):
+                    raise ValueError("请先生成当前字幕的原声版。")
+                output = film_folder(folder, {**film,"audioMode":"original"}) / "dubbed.mp4"
+                return self.serve(output, f"Xread-{folder.name[:8]}-original-audio.mp4" if "download" in name else None)
+            if name == "dual-audio.mp4":
+                film = job.get("dub", {})
+                if (film.get("audioMode") != "both" or film.get("status") != "ready"
+                        or film.get("revision") != job.get("revision", ".")):
+                    raise ValueError("请先勾选原声和中文配音，完成两版制作。")
+                dubbed = film_folder(folder, film)
+                target = dubbed / "dual-audio.mp4"
+                with artifact_lock(folder):
+                    if not target.exists():
+                        original = film_folder(folder, {**film,"audioMode":"original"}) / "dubbed.mp4"
+                        media.export_two_soundtracks(original, dubbed / "dubbed.mp4", target)
+                return self.serve(target, f"Xread-{folder.name[:8]}-dual-audio.mp4")
             if name in {"dubbed.mp4", "dub-download.mp4"}:
                 film = job.get("dub", {})
                 if film.get("status") != "ready" or film["revision"] != job.get("revision", "."):
@@ -503,11 +537,12 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if not 0 < length <= MAX_UPLOAD:
                 raise ValueError("视频必须大于 0 字节，且不超过 8 GB。")
-            sound, selected, quality = sound_options(self.headers.get("X-Audio-Mode", "dubbed"),
-                self.headers.get("X-Voice", DEFAULT_VOICE), self.headers.get("X-Quality", "standard"))
+            sound, selected, quality, style = sound_options(self.headers.get("X-Audio-Mode", "dubbed"),
+                self.headers.get("X-Voice", DEFAULT_VOICE), self.headers.get("X-Quality", "standard"),
+                self.headers.get("X-Style", "natural"))
             mode = caption_mode(self.headers.get("X-Caption-Mode", "auto"))
             folder = new_job("file", title, input="upload" + ext, autoVoice=selected, autoQuality=quality,
-                             captionMode=mode, audioMode=sound)
+                             captionMode=mode, audioMode=sound, autoStyle=style)
             update(folder, message="正在接收本地文件")
             try:
                 partial = folder / "upload.part"
@@ -529,10 +564,10 @@ class Handler(BaseHTTPRequestHandler):
             match = X_URL.fullmatch(url) if isinstance(url, str) else None
             if not match:
                 raise ValueError("请粘贴包含 /status/ 和帖子编号的 X 视频链接。")
-            sound, voice, quality = sound_options(data.get("audioMode", "dubbed"),
-                data.get("voice", DEFAULT_VOICE), data.get("quality", "standard"))
+            sound, voice, quality, style = sound_options(data.get("audioMode", "dubbed"),
+                data.get("voice", DEFAULT_VOICE), data.get("quality", "standard"), data.get("style", "natural"))
             folder = new_job("x", "X 视频 · " + match[1], url=url, autoVoice=voice,
-                             autoQuality=quality, captionMode=caption_mode(data.get("captionMode", "auto")), audioMode=sound)
+                             autoQuality=quality, autoStyle=style, captionMode=caption_mode(data.get("captionMode", "auto")), audioMode=sound)
         else:
             match = re.fullmatch(r"/api/jobs/([^/]+)/(retry|cues|dub)", path)
             if not match:
@@ -540,8 +575,8 @@ class Handler(BaseHTTPRequestHandler):
             folder = open_job(match[1])
             if match[2] == "dub":
                 data = self.body()
-                sound, voice, quality = sound_options(data.get("audioMode", "dubbed"),
-                    data.get("voice", DEFAULT_VOICE), data.get("quality", "standard"))
+                sound, voice, quality, style = sound_options(data.get("audioMode", "dubbed"),
+                    data.get("voice", DEFAULT_VOICE), data.get("quality", "standard"), data.get("style", "natural"))
                 with state_lock:
                     job = read(folder / "job.json")
                     mode = caption_mode(data.get("captionMode", job.get("captionMode", "auto")))
@@ -550,14 +585,15 @@ class Handler(BaseHTTPRequestHandler):
                     previous = job.get("dub", {})
                     if (previous.get("status") in {"queued", "working", "ready"} and
                         previous.get("audioMode","dubbed") == sound and
-                        (previous.get("renderVersion") == VERSION or sound == "original") and
-                        (sound == "original" or (previous.get("voice") == voice and previous.get("quality","standard") == quality))
+                        (previous.get("renderVersion") == RENDER_VERSION or sound == "original") and
+                        (sound == "original" or (previous.get("voice") == voice and previous.get("quality","standard") == quality
+                                                 and previous.get("style","natural") == style))
                         and mode == previous.get("captionMode", "auto")
                         and previous.get("revision") == job.get("revision", ".")):
                         return self.reply(public(job))
                     if previous.get("status") in {"queued","working"}:
                         raise ValueError("当前配音任务尚未完成，请稍后更换音色。")
-                    request = new_dub(job, voice, quality, mode, sound)
+                    request = new_dub(job, voice, quality, mode, sound, style)
                     job = update(folder, dub=request, captionMode=mode, audioMode=sound)
                     enqueue(folder, run_dub, request)
                     return self.reply(public(job), 202)
@@ -585,7 +621,7 @@ class Handler(BaseHTTPRequestHandler):
                         changes = {}
                         if old:
                             changes["dub"] = dict(status="stale", progress=0, voice=old["voice"],
-                                                  quality=old.get("quality", "standard"),
+                                                  quality=old.get("quality", "standard"), style=old.get("style", "natural"),
                                                   audioMode=old.get("audioMode", "dubbed"),
                                                   captionMode=old.get("captionMode", "auto"),
                                                   message="字幕已修改，请重新制作成片")

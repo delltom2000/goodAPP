@@ -306,6 +306,17 @@ def _convert(destination, args, cwd=None):
     return destination
 
 
+def export_two_soundtracks(original, mandarin, destination):
+    has_sound = any(s["codec_type"] == "audio" for s in probe(original)["streams"])
+    inputs = ["-i", original, "-i", mandarin, "-map", "0:v:0",
+              "-map", "0:a:0" if has_sound else "1:a:0", "-map", "1:a:0", "-c", "copy"]
+    if not has_sound:
+        inputs.extend(["-c:a:0", "aac", "-filter:a:0", "volume=0", "-metadata:s:a:0", "language=und"])
+    return _convert(destination, [*inputs, "-disposition:a:0", "default", "-disposition:a:1", "0",
+        "-metadata:s:a:0", "handler_name=原声", "-metadata:s:a:1", "handler_name=中文配音",
+        "-metadata:s:a:1", "language=zho", "-movflags", "+faststart"])
+
+
 def prepare_preview(source, destination):
     source = Path(source).resolve()
     destination = Path(destination).resolve()

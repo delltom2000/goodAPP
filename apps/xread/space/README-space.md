@@ -9,16 +9,16 @@ suggested_hardware: cpu-basic
 short_description: 将英文视频制作成带中文字幕的原声或中文配音 MP4
 ---
 
-# Xread 中文视频译制台
+# Xread 2.2 中文视频译制台
 
 粘贴公开 X 帖子链接，或上传一段本地英文视频，就能听原声看中文字幕，也能制作普通话配音版。直接打开工作台即可开始。[进入在线工作台](https://dellweb3-translateall.hf.space)
 
 ## 第一次使用
 
 1. 在「X 帖子链接」中每行粘贴一条链接，或点「本地视频」一次选择多个文件。如果 Space 读取不到某条帖子，可以上传已保存的视频。
-2. 首次使用默认「原声＋中文字幕」，适合访谈和演讲。想听中文时选「中文配音」，可以先试听自然女声、清亮女声或男声。选定固定音色后，全片都用同一种声音。
-3. 点「加入队列」，在「任务与历史」中查看每条视频的阶段和进度。点击字幕可跳到对应画面，也可以打开「编辑」校对译文。
-4. 制作完成后可切换源视频和成片，也可下载成片 MP4。在「导出」里保存 SRT；需要中英对照时，先点「双语对照」再导出。
+2. 先选音色和朗读风格，点「试听」比较停顿和语气。五个女声、三个男声都能搭配「自然交谈」「演讲」或「甜美讲述」，也可一键选用「青禾 · 演讲」或「小满 · 甜美」。
+3. 勾选「原声＋中文字幕」或「中文配音＋中文字幕」，也可以两项都选。首次默认仅选原声。点「开始翻译」，到「任务与历史」查看每条视频的进度。
+4. 在播放器中切换源视频和已就绪的成片。双选时，原声版先完成就可下载；两版完成后，也可从「导出」下载双音轨 MP4，在 VLC 等播放器中切换音轨。需要双语 SRT 时，先点「双语对照」再导出。
 
 已有中英文字幕时，Xread 会优先复用。只有英文时，系统保留英文时间轴并翻译；缺少可用字幕时，则先识别英文对白。原画已印有中文的片段可选「原画已有中文」，避免叠加第二层文字。
 
@@ -30,4 +30,4 @@ Space 使用免费的 CPU Basic 算力。长视频的识别、配音和转码需
 
 ## Windows 本地版
 
-要在自己的电脑上处理和保存视频，请下载 Windows x64 压缩包，完整解压后双击 `Start Xread.cmd`。浏览器会打开本机工作台，识别、翻译和配音模型随包提供。下载 X 视频需要联网，已保存的视频可以在本机离线处理。[下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.1-Windows-x64.zip?download=true) · [查看 goodAPP 项目源码](https://github.com/delltom2000/goodAPP/tree/main/apps/xread)
+要在自己的电脑上处理和保存视频，请下载 Windows x64 压缩包，完整解压后双击 `Start Xread.cmd`。浏览器会打开本机工作台，识别、翻译和配音模型随包提供。下载 X 视频需要联网，已保存的视频可以在本机离线处理。[下载 Windows x64 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.2-Windows-x64.zip?download=true) · [查看 goodAPP 项目源码](https://github.com/delltom2000/goodAPP/tree/main/apps/xread)

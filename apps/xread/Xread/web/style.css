@@ -156,6 +156,18 @@ progress::-webkit-progress-bar{background:#e8e5ef;border-radius:3px}progress::-w
 .voice-settings{flex-wrap:wrap;gap:8px 16px}
 .voice-pick .voice-label{min-width:0}
 .voice-pick select{max-width:175px}
+.voice-presets{display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px;color:var(--muted);font-size:.82rem}
+.voice-presets button{padding:3px 7px;border:1px solid #dcdbe2;background:#fff;border-radius:6px;font-size:.82rem;white-space:nowrap}
+.voice-presets button:hover,.voice-presets button[aria-pressed="true"]{color:var(--purple);background:var(--soft);border-color:#d3cbee}
+.settings-row{margin-top:14px}
+.output-row,.output-options,.result-files{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+.output-row{border-top:1px solid var(--line);margin-top:13px;padding-top:11px;justify-content:space-between}
+.output-options{font-size:.9rem}.output-options b{font-size:.87rem}
+.output-options label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.output-options input{accent-color:var(--purple);width:16px;height:16px;margin:0}
+.output-row .primary{padding:8px 20px}.result-files:has(a:not([hidden])){margin-top:9px}
+.result-files a.quiet{text-decoration:none;color:var(--purple)}
+.player-heading{flex-wrap:wrap}.player-heading .switch{flex-wrap:wrap}
 .dub-actions .voice-settings .voice-pick select{max-width:175px}
 .audition{color:var(--purple);border:1px solid #dcd6f2;border-radius:6px;background:#fff;font-size:.82rem;padding:4px 8px;white-space:nowrap}
 .audition[aria-pressed="true"]{background:var(--soft)}

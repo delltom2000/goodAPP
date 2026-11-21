@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f6f6f5">
-  <title>Xread 2.1 · 中文视频译制台</title>
+  <title>Xread 2.2 · 中文视频译制台</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -12,7 +12,7 @@
   <header class="mast"><div class="mast-inner">
     <div class="brand" aria-label="Xread"><span class="brand-mark" aria-hidden="true"><b></b><b></b><b></b><b></b></span>Xread</div>
     <span class="brand-context">中文视频译制台</span>
-    <span class="version-label">v2.1</span>
+    <span class="version-label">v2.2</span>
     <button class="library-button" id="open-library"><i class="icon i-library" aria-hidden="true"></i>任务与历史 <span id="job-count">0</span></button>
   </div></header>
 
@@ -29,7 +29,7 @@
     <div class="stage">
     <div class="intro">
       <h1>视频译制台<span class="title-dot" aria-hidden="true">.</span></h1>
-      <p>批量导入视频，生成带中文字幕的原声或中文配音成片。</p>
+      <p>批量翻译视频，可同时制作原声字幕版和中文配音版。</p>
     </div>
 
     <section class="import-card" aria-label="导入视频">
@@ -44,14 +44,20 @@
           <button type="button" id="choose-file" hidden>选择本地视频，可多选…</button>
           <input type="file" id="source-file" multiple accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi" hidden>
         </div>
-        <div class="import-actions"><div class="import-settings">
-          <label class="voice-label">成片声音<select id="import-audio-mode"><option value="dubbed">中文配音</option><option value="original">原声＋中文字幕</option></select></label>
+        <div class="import-settings settings-row">
           <div class="voice-settings" id="import-voice-settings"><div class="voice-pick"><label class="voice-label">配音音色<select id="import-voice" aria-describedby="import-voice-hint"></select></label>
             <button class="audition" id="import-audition" type="button" aria-label="试听导入配音音色" aria-pressed="false">试听</button></div>
-          <label class="voice-label">音质<select id="import-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label></div>
+          <label class="voice-label">朗读风格<select id="import-style"><option value="natural">自然交谈</option><option value="speech">演讲</option><option value="sweet">甜美讲述</option></select></label>
+          <label class="voice-label">音质<select id="import-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label>
+          <div class="voice-presets" id="import-presets" role="group" aria-label="导入配音快速搭配">
+            <span>快速选用</span><button type="button" data-voice="female_qinghe" data-style="speech">青禾 · 演讲</button><button type="button" data-voice="female_xiaoman" data-style="sweet">小满 · 甜美</button>
+          </div></div>
           <label class="voice-label">画面字幕<select id="import-captions"><option value="auto">自动判断</option><option value="keep">原画已有中文</option><option value="burn">添加中文字幕</option></select></label></div>
-          <button class="primary" id="submit-import" type="submit">加入队列</button></div>
         <small class="voice-hint" id="import-voice-hint"></small><p class="inline-note" id="import-audio-error" role="status" hidden></p>
+        <div class="output-row"><div class="output-options" role="group" aria-label="输出版本，可多选"><b>输出版本</b>
+          <label><input type="checkbox" id="import-out-original" checked>原声＋中文字幕</label><label><input type="checkbox" id="import-out-dubbed">中文配音＋中文字幕</label></div>
+          <button class="primary" id="submit-import" type="submit">开始翻译</button></div>
+        <small class="inline-note error-note" id="import-output-note" hidden>请至少勾选一个输出版本。</small>
       </form>
       <p id="import-note" class="inline-note" role="status" hidden></p>
       <ul id="batch-result" class="batch-result" aria-label="批量导入结果" hidden></ul>
@@ -65,7 +71,7 @@
       </div>
       <div class="workspace" id="workspace" hidden>
         <section class="player-card">
-          <div class="card-head"><div class="section-label"><i class="icon i-screen" aria-hidden="true"></i><h2>视频预览</h2></div><div class="switch" role="group" aria-label="视频版本"><button id="variant-source" aria-pressed="true" title="听源视频原声并查看中文字幕">听原声</button><button id="variant-dub" aria-pressed="false">成片</button></div></div>
+          <div class="card-head player-heading"><div class="section-label"><i class="icon i-screen" aria-hidden="true"></i><h2>视频预览</h2></div><div class="switch" role="group" aria-label="视频版本"><button id="variant-source" aria-pressed="true" title="观看源视频">源视频</button><button id="variant-original" aria-pressed="false" hidden>原声字幕版</button><button id="variant-dub" aria-pressed="false" hidden>中文配音版</button></div></div>
           <div class="screen"><video id="player" controls preload="metadata" playsinline aria-label="视频预览播放器"></video></div>
           <div class="video-detail"><h3 id="video-title">载入中</h3><p class="meta"><span id="source-label"></span><span id="video-meta"></span></p></div>
           <div class="play-tools">
@@ -77,13 +83,21 @@
           </div>
           <div class="dub-panel"><div class="dub-detail"><b id="dub-title">成片制作</b><p id="current-voice" hidden></p><p id="dub-message"></p><progress id="dub-progress" max="100" aria-label="成片生成进度" hidden></progress></div>
             <div class="dub-actions">
-              <label class="voice-label">下次成片声音<select id="job-audio-mode"><option value="dubbed">中文配音</option><option value="original">原声＋中文字幕</option></select></label>
               <div class="voice-settings" id="job-voice-settings"><div class="voice-pick"><label class="voice-label">音色<select id="job-voice" aria-describedby="job-voice-hint"></select></label>
                 <button class="audition" id="job-audition" type="button" aria-label="试听下次配音音色" aria-pressed="false">试听</button></div>
-              <label class="voice-label"><span class="sr-only">本任务配音音质</span><select id="job-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label></div>
+              <label class="voice-label">朗读风格<select id="job-style"><option value="natural">自然交谈</option><option value="speech">演讲</option><option value="sweet">甜美讲述</option></select></label>
+              <label class="voice-label"><span class="sr-only">本任务配音音质</span><select id="job-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label>
+              <div class="voice-presets" id="job-presets" role="group" aria-label="本任务配音快速搭配">
+                <span>快速选用</span><button type="button" data-voice="female_qinghe" data-style="speech">青禾 · 演讲</button><button type="button" data-voice="female_xiaoman" data-style="sweet">小满 · 甜美</button>
+              </div></div>
               <label class="voice-label"><span class="sr-only">本任务画面字幕</span><select id="job-captions"><option value="auto">自动判断</option><option value="keep">原画已有中文</option><option value="burn">添加中文字幕</option></select></label>
-              <button class="quiet" id="request-dub">生成成片</button><a id="download-dub" class="quiet" download hidden>下载成片</a></div>
+              </div>
             <small class="voice-hint" id="job-voice-hint"></small><p class="inline-note" id="job-audio-error" role="status" hidden></p>
+            <div class="output-row"><div class="output-options" role="group" aria-label="本任务输出版本，可多选"><b>输出版本</b>
+              <label><input type="checkbox" id="job-out-original" checked>原声＋中文字幕</label><label><input type="checkbox" id="job-out-dubbed">中文配音＋中文字幕</label></div>
+              <button class="quiet" id="request-dub">开始翻译</button></div>
+            <small class="inline-note error-note" id="job-output-note" hidden>请至少勾选一个输出版本。</small>
+            <div class="result-files"><a id="download-original-film" class="quiet" download hidden>下载原声字幕版</a><a id="download-dub" class="quiet" download hidden>下载中文配音版</a></div>
           </div>
         </section>
         <section class="transcript">
@@ -104,7 +118,9 @@
   <dialog id="exports"><div class="dialog-head"><h2>导出文件</h2><button class="close" data-close="exports" aria-label="关闭导出选项">×</button></div>
     <p class="dialog-sub" id="export-title"></p>
     <div class="export-list">
+      <a id="export-dual-audio" download hidden><span><b>双音轨 MP4</b><small>在 VLC 等支持选择音轨的播放器中切换原声与中文配音</small></span><i class="icon i-download" aria-hidden="true"></i></a>
       <a id="export-dub" download hidden><span><b>成片 MP4</b><small></small></span><i class="icon i-download" aria-hidden="true"></i></a>
+      <a id="export-original-film" download hidden><span><b>原声字幕版 MP4</b><small>原音轨与中文字幕</small></span><i class="icon i-download" aria-hidden="true"></i></a>
       <a id="export-mp4" download><span><b>字幕视频 MP4</b><small>播放时可切换中文和中英双语字幕</small></span><i class="icon i-download" aria-hidden="true"></i></a>
       <a id="export-srt" download><span><b id="srt-name">中文字幕 SRT</b><small>带时间轴，可用视频播放器加载</small></span><i class="icon i-download" aria-hidden="true"></i></a>
       <a id="export-burn" download><span><b>固定中文字幕 MP4</b><small>将中文写入画面，长视频导出需等待转码</small></span><i class="icon i-download" aria-hidden="true"></i></a>

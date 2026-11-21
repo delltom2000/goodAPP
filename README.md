@@ -10,7 +10,7 @@
 | 净片 CleanClip | Android 8.0+ / 网页 | 手机离线自动查找角落 Logo、跟随位置变化并修补导出；电脑 LaMa 修补工具 | [使用说明](apps/cutlogo-apps/apps/cleanclip/README.md) · [在线体验](https://huggingface.co/spaces/dellweb3/CutLogo) | [0.4.0 自动版 APK](apps/cutlogo-apps/dist/cleanclip-0.4.0-auto.apk) |
 | 币市脉搏 Crypto Pulse | Android 8.0+ / 网页 | 500 个活跃币实时行情；新币雷达用 12 个因子给出可解释评分；多源历史图表与技术指标、自选、中英切换、断网保留离线快照 | [使用说明](apps/crypto-pulse/README.md) · [在线体验](https://crypto-pulse-87453.app.workbuddy.host/?sharecode=HBNRIO22TM) | [下载 1.1.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.1.0.apk) |
 | 雅思一本通 · studyen | Android 8.0+ / 本地网页 | 语法基础、分题型训练、错题本、自适应模拟与学习评估；包含 10,000 条练习记录，支持安卓离线使用 | [源码与使用说明](apps/studyen/README.md) | [下载 0.2.1 测试版 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/studyen/dist/downloads/jianjin-ielts-debug.apk) |
-| Xread 中文视频译制台 | 网页 / Windows x64 | 批量导入 X 或本地视频，生成原声中文字幕版或固定中文声线配音版 | [源码与说明](apps/xread/) · [在线转换](https://dellweb3-translateall.hf.space) | [下载 2.1 Windows 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.1-Windows-x64.zip?download=true) |
+| Xread 中文视频译制台 | 网页 / Windows x64 | 批量导入 X 或本地视频，选原声或普通话配音，8 种音色、3 种朗读风格 | [源码与说明](apps/xread/) · [在线转换](https://dellweb3-translateall.hf.space) | [下载 2.2 Windows 版](https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/Xread-Web-2.2-Windows-x64.zip?download=true) |
 
 悬浮时钟目前为测试版本：已通过编译、签名校验和方向计算单元测试；不同手机上的实际重力旋转和后台运行行为仍需验证。安装包使用测试签名。
 

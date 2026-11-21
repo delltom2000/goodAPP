@@ -3,8 +3,14 @@ const $ = id => document.getElementById(id);
 const player = $("player");
 const statusNames = {queued:"等待处理",working:"处理中",ready:"已完成",error:"需要重试"};
 const sourceNames = {x:"X 视频",file:"本地视频",demo:"内置示例"};
-const fixedVoices = {female:"自然女声",female_clear:"清亮女声",male:"男声"};
+const femaleVoices = {
+  female:"自然女声", female_clear:"清亮女声", female_qinghe:"青禾女声",
+  female_yunshu:"云舒女声", female_xiaoman:"小满女声"
+};
+const maleVoices = {male:"男声", male_songyan:"松言男声", male_yunzhou:"云舟男声"};
+const fixedVoices = {...femaleVoices,...maleVoices};
 const voiceNames = {...fixedVoices,auto:"自动（可随原声变化）",low:"旧版低音",high:"旧版高音"};
+const styleNames = {natural:"自然交谈",speech:"演讲",sweet:"甜美讲述"};
 const samplePlayer = $("voice-preview");
 let sampleOwner = null, sampleAttempt = 0;
 let jobs = [], currentId = null, rows = [], cueButtons = [], activeCue = -1;
@@ -12,8 +18,8 @@ let readyId = null, selectionVersion = 0, mode = "link", importing = false, savi
 let language = readPref("xread-language") === "bilingual" ? "bilingual" : "zh";
 let transcriptDual=readPref("xread-transcript-dual")==="true";
 let showOverlay = true;
-let previewMode="source", lastDubState="none", lastFilmKey="", sourceRevision=0, submittingDubId=null;
-let waitingForCaptionCheck=false;
+let previewMode="source", lastFilmKey="", sourceRevision=0, submittingDubId=null;
+let waitingForCaptionCheck=false, manualPreview=false;
 let pendingFiles=[], queueSnapshot="", jobsRequest=0;
 let manualScrollUntil = 0, pollDelay = 1800, trackVersion = 0;
 
@@ -38,32 +44,72 @@ function savedVoice() {
   const voice=readPref("xread-preferred-voice");
   return Object.hasOwn(fixedVoices,voice) || voice==="auto" ? voice : "female";
 }
-function savedAudioMode(){return readPref("xread-audio-mode")==="dubbed"?"dubbed":"original";}
-function soundSettings(scope) {
-  const audioMode=$(scope+"-audio-mode").value;
-  return audioMode==="original"?{audioMode}:{audioMode,voice:$(scope+"-voice").value,quality:$(scope+"-quality").value};
+function savedAudioMode(){
+  const mode=readPref("xread-audio-mode");
+  return ["original","dubbed","both"].includes(mode)?mode:"original";
 }
-function soundLabel(dub) { return dub?.audioMode==="original"?"原声":"中文配音"; }
-function filmName(dub) { return soundLabel(dub)+"成片"; }
+function outputMode(scope) {
+  const original=$(scope+"-out-original").checked, dubbed=$(scope+"-out-dubbed").checked;
+  if(original && dubbed) return "both";
+  return original?"original":dubbed?"dubbed":"";
+}
+function setOutputs(scope,mode){
+  $(scope+"-out-original").checked=mode==="both" || mode==="original";
+  $(scope+"-out-dubbed").checked=mode==="both" || mode==="dubbed";
+  updateOutputButton(scope);
+}
+function updateOutputButton(scope) {
+  const empty=!outputMode(scope), busy=scope==="import"?importing:$("job-out-original").disabled;
+  $(scope+"-output-note").hidden=!empty;
+  $(scope==="import"?"submit-import":"request-dub").disabled=empty || busy;
+}
+function savedStyle() {
+  const style=readPref("xread-reading-style");
+  return Object.hasOwn(styleNames,style)?style:"natural";
+}
+function soundSettings(scope) {
+  const audioMode=outputMode(scope);
+  return audioMode==="original"?{audioMode}:{audioMode,voice:$(scope+"-voice").value,style:$(scope+"-style").value,quality:$(scope+"-quality").value};
+}
+function filmName(dub) { return dub?.audioMode==="both"?"两版成片":dub?.audioMode==="original"?"原声字幕版":"中文配音版"; }
+function availableFilms(dub={}) {
+  const ready=dub.status==="ready";
+  return {
+    original:dub.audioMode==="both"?dub.originalReady===true:dub.audioMode==="original" && ready,
+    dub:dub.audioMode!=="original" && ready
+  };
+}
+function filmFile(which,download=false) {
+  if(which==="source") return "video.mp4";
+  if(which==="original" && jobNow()?.dub?.audioMode==="both") return download?"original-film-download.mp4":"original-film.mp4";
+  return download?"dub-download.mp4":"dubbed.mp4";
+}
 function fillVoices(scope,requestedVoice) {
   const menu=$(scope+"-voice");
-  const fixed=el("optgroup"); fixed.label="全片固定音色";
-  for(const [value,label] of Object.entries(fixedVoices)) fixed.append(new Option(label,value));
-  menu.replaceChildren(fixed,new Option(voiceNames.auto,"auto"));
+  menu.replaceChildren();
+  for(const [title,voices] of [["女声",femaleVoices],["男声",maleVoices]]) {
+    const group=el("optgroup");
+    group.label=title;
+    for(const [value,label] of Object.entries(voices)) group.append(new Option(label,value));
+    menu.append(group);
+  }
+  menu.append(new Option(voiceNames.auto,"auto"));
   if(scope==="job" && ["low","high"].includes(requestedVoice)) menu.append(new Option(voiceNames[requestedVoice],requestedVoice));
   menu.value=Array.from(menu.options).some(o=>o.value===requestedVoice)?requestedVoice:savedVoice();
   updateAudition(scope);
 }
 function updateAudition(scope) {
   const voice=$(scope+"-voice").value, fixed=Object.hasOwn(fixedVoices,voice);
-  const original=$(scope+"-audio-mode").value==="original";
-  $(scope+"-voice-settings").hidden=original;
   const button=$(scope+"-audition"), playing=sampleOwner===scope;
-  button.disabled=original || !fixed || $(scope+"-voice").disabled;
+  button.disabled=!fixed || $(scope+"-voice").disabled;
   button.setAttribute("aria-pressed",String(playing));
   button.textContent=playing?"停止":"试听";
   button.setAttribute("aria-label",(playing?"停止":"试听")+(scope==="job"?"下次配音":"导入配音")+"音色");
-  $(scope+"-voice-hint").textContent=original?"保留原音轨，以中文字幕观看。":fixed?"整片使用同一音色。":voice==="auto"?"自动音色随原声选择，整片可能包含不同声音。":"沿用此历史任务的旧版音色。";
+  for(const preset of $(scope+"-presets").querySelectorAll("button")){
+    preset.disabled=$(scope+"-voice").disabled;
+    preset.setAttribute("aria-pressed",String(preset.dataset.voice===voice && preset.dataset.style===$(scope+"-style").value));
+  }
+  $(scope+"-voice-hint").textContent=fixed?"可先试听不同风格的停顿和语气。选定的音色用于中文配音版。":voice==="auto"?"自动音色随原声选择，整片可能包含不同声音。":"沿用此历史任务的旧版音色。";
 }
 function stopAudition() {
   if(!sampleOwner) return;
@@ -74,16 +120,17 @@ function stopAudition() {
   updateAudition(scope);
 }
 async function playAudition(scope) {
-  const voice=$(scope+"-voice").value, quality=$(scope+"-quality").value;
+  const voice=$(scope+"-voice").value, quality=$(scope+"-quality").value, style=$(scope+"-style").value;
   const toggleOff=sampleOwner===scope;
   stopAudition();
-  if(toggleOff || $(scope+"-audio-mode").value==="original" || !Object.hasOwn(fixedVoices,voice)) return;
+  if(toggleOff || !Object.hasOwn(fixedVoices,voice)) return;
   const error=$(scope+"-audio-error");
   setNote(error);
   player.pause();
   const attempt=++sampleAttempt;
   sampleOwner=scope; updateAudition(scope);
-  samplePlayer.src="/static/voice-"+voice+"-"+(quality==="fast"?"fast":"standard")+".mp3";
+  const styleSuffix=style==="natural"?"":"-"+style;
+  samplePlayer.src="/static/voice-"+voice+"-"+quality+styleSuffix+".mp3";
   try { await samplePlayer.play(); }
   catch { if(attempt===sampleAttempt){ stopAudition(); setNote(error,"试听未能播放，请重试。",true); } }
 }
@@ -96,9 +143,23 @@ player.addEventListener("play",stopAudition);
 document.addEventListener("visibilitychange",()=>{if(document.hidden) stopAudition();});
 window.addEventListener("pagehide",stopAudition);
 for(const scope of ["import","job"]) {
-  $(scope+"-audio-mode").value=savedAudioMode();
+  setOutputs(scope,savedAudioMode());
+  $(scope+"-style").value=savedStyle();
   $(scope+"-audition").onclick=()=>playAudition(scope);
-  for(const setting of ["voice","quality","audio-mode"]) $(scope+"-"+setting).addEventListener("change",()=>{
+  for(const preset of $(scope+"-presets").querySelectorAll("button")) preset.onclick=()=>{
+    for(const setting of ["voice","style"]){
+      const select=$(scope+"-"+setting);
+      select.value=preset.dataset[setting];
+      select.dispatchEvent(new Event("change"));
+    }
+  };
+  for(const kind of ["original","dubbed"]) $(scope+"-out-"+kind).onchange=()=>{
+    stopAudition();
+    const choice=outputMode(scope);
+    if(choice) writePref("xread-audio-mode",choice);
+    updateOutputButton(scope);
+  };
+  for(const setting of ["voice","style","quality"]) $(scope+"-"+setting).addEventListener("change",()=>{
     stopAudition();
     setNote($(scope+"-audio-error"));
     const voice=$(scope+"-voice").value;
@@ -108,12 +169,10 @@ for(const scope of ["import","job"]) {
         $("import-voice").value=voice; updateAudition("import");
       }
     }
-    if(setting==="audio-mode"){
-      const choice=$(scope+"-audio-mode").value;
-      writePref("xread-audio-mode",choice);
-      if(scope==="job" && !importing){
-        $("import-audio-mode").value=choice; updateAudition("import");
-      }
+    if(setting==="style"){
+      const choice=$(scope+"-style").value;
+      writePref("xread-reading-style",choice);
+      if(scope==="job" && !importing){ $("import-style").value=choice; updateAudition("import"); }
     }
     updateAudition(scope);
   });
@@ -160,9 +219,10 @@ function sendFile(file,sound,captionMode,onProgress) {
     xhr.setRequestHeader("X-Xread","1");
     xhr.setRequestHeader("X-Filename",encodeURIComponent(file.name));
     xhr.setRequestHeader("X-Audio-Mode",sound.audioMode);
-    if(sound.audioMode==="dubbed"){
+    if(sound.audioMode!=="original"){
       xhr.setRequestHeader("X-Voice",sound.voice);
       xhr.setRequestHeader("X-Quality",sound.quality);
+      xhr.setRequestHeader("X-Style",sound.style);
     }
     xhr.setRequestHeader("X-Caption-Mode",captionMode);
     xhr.setRequestHeader("Content-Type","application/octet-stream");
@@ -181,14 +241,14 @@ function sendFile(file,sound,captionMode,onProgress) {
 }
 $("import-form").onsubmit = async e=>{
   e.preventDefault();
-  if(importing) return;
+  if(importing || !outputMode("import")) return;
   const local=mode==="file", sound=soundSettings("import");
   const captionMode=$("import-captions").value;
   const items=local?[...pendingFiles]:$("source-url").value.trim().split(/\s+/u).filter(Boolean);
   if(!items.length) { if(local) $("source-file").click(); else $("source-url").focus(); return; }
   importing = true;
   if(sampleOwner==="import") stopAudition();
-  const controls=["submit-import","tab-link","tab-file","choose-file","source-url","import-audio-mode","import-voice","import-quality","import-captions"];
+  const controls=["submit-import","tab-link","tab-file","choose-file","source-url","import-out-original","import-out-dubbed","import-voice","import-style","import-quality","import-captions"];
   for(const id of controls) $(id).disabled=true;
   updateAudition("import");
   const list=$("batch-result"), failed=[];
@@ -219,6 +279,7 @@ $("import-form").onsubmit = async e=>{
     importing=false;
     for(const id of controls) $(id).disabled=false;
     updateAudition("import");
+    updateOutputButton("import");
   }
 };
 function addJob(job) { jobs = [job,...jobs.filter(j=>j.id!==job.id)]; jobsRequest++; updateCount(); renderHistory(); }
@@ -291,7 +352,7 @@ async function selectJob(id) {
   currentId=id; writePref("xread-current",id);
   history.replaceState(null,"","#job="+encodeURIComponent(id));
   ++selectionVersion; ++sourceRevision; readyId=null; rows=[]; cueButtons=[]; activeCue=-1;
-  previewMode="source"; lastDubState="none"; lastFilmKey=""; renderHistory();
+  previewMode="source"; manualPreview=false; lastFilmKey=""; renderHistory();
   player.pause(); player.removeAttribute("src"); player.replaceChildren(); player.load();
   setNote($("work-note")); await displayJob();
 }
@@ -318,7 +379,8 @@ async function displayJob() {
   if(job.id==="demo") player.setAttribute("poster","/static/poster.jpg"); else player.removeAttribute("poster");
   const hasFilmSettings=job.dub?.status && job.dub.status!=="none";
   fillVoices("job",hasFilmSettings && job.dub.audioMode!=="original"?job.dub.voice:savedVoice());
-  $("job-audio-mode").value=hasFilmSettings?(job.dub.audioMode || "dubbed"):savedAudioMode();
+  setOutputs("job",hasFilmSettings?(job.dub.audioMode || "dubbed"):savedAudioMode());
+  $("job-style").value=hasFilmSettings && job.dub.audioMode!=="original"?(job.dub.style || "natural"):savedStyle();
   $("job-quality").value=job.dub?.quality || "standard";
   $("job-captions").value=baked?"keep":job.dub?.captionMode || job.captionMode || "auto";
   waitingForCaptionCheck=awaitingDetection(job);
@@ -332,19 +394,21 @@ function protectPicture(job=jobNow()) {
   return knownCaptions(job) || job?.burnedCaptions===true || job?.captionMode==="keep" || job?.dub?.captionMode==="keep" || $("job-captions").value==="keep";
 }
 function updateSubtitleControls() {
-  const dubbed=previewMode==="dub", keep=protectPicture(), pending=awaitingDetection();
-  $("subtitle-switch").hidden=dubbed || keep || pending;
-  $("dub-caption").hidden=!dubbed && !keep && !pending;
-  $("dub-caption").textContent=dubbed?soundLabel(jobNow()?.dub)+(keep?" · 沿用原画字幕":" · 内嵌中文字幕"):keep?"沿用原画中文字幕":"尚未检测画面字幕，当前显示原画";
+  const film=previewMode!=="source", keep=protectPicture(), pending=awaitingDetection();
+  $("subtitle-switch").hidden=film || keep || pending;
+  $("dub-caption").hidden=!film && !keep && !pending;
+  const sound=previewMode==="dub"?"中文配音":"原音轨";
+  $("dub-caption").textContent=film?sound+(keep?" · 沿用原画字幕":" · 内嵌中文字幕"):keep?"沿用原画中文字幕":"尚未检测画面字幕，当前显示原画";
 }
 $("job-captions").onchange=()=>{updateSubtitleControls();attachTracks();applyLanguage();};
 function setPreview(next,preserve=true) {
   stopAudition();
   const revision=++sourceRevision;
   const position=preserve?player.currentTime:0, playing=preserve && !player.paused;
-  previewMode=next; const dubbed=next==="dub";
-  for(const [id,on] of [["variant-source",!dubbed],["variant-dub",dubbed]]) {
-    $(id).classList.toggle("active",on); $(id).setAttribute("aria-pressed",String(on));
+  previewMode=next;
+  for(const kind of ["source","original","dub"]) {
+    const button=$("variant-"+kind), on=kind===next;
+    button.classList.toggle("active",on); button.setAttribute("aria-pressed",String(on));
   }
   updateSubtitleControls();
   player.onloadedmetadata=()=>{
@@ -352,32 +416,40 @@ function setPreview(next,preserve=true) {
     if(position>0) player.currentTime=Math.min(position,Number.isFinite(player.duration)?player.duration:position);
     if(playing) player.play().catch(()=>{});
   };
-  player.src=asset(dubbed?"dubbed.mp4":"video.mp4")+(dubbed?"?v="+Date.now():"");
+  player.src=asset(filmFile(next))+(next!=="source"?"?v="+Date.now():"");
   attachTracks(); applyLanguage();
 }
 function syncDub(job,initial=false) {
   const dub=job.dub || {}, state=dub.status || "none", active=["queued","working"].includes(state), available=state==="ready";
-  const filmKey=JSON.stringify([dub.audioMode || "dubbed",dub.voice,dub.quality,dub.captionMode]);
-  $("variant-dub").disabled=!available;
-  $("variant-dub").textContent=dub.audioMode==="original"?"原声字幕成片":"听中文配音";
-  $("variant-dub").title=available?"播放"+filmName(dub):"生成后播放";
-  if(initial) setPreview(available?"dub":"source",false);
-  else if(available && (lastDubState!=="ready" || filmKey!==lastFilmKey)) setPreview("dub");
-  else if(!available && previewMode==="dub") setPreview("source");
-  lastDubState=state; lastFilmKey=filmKey;
+  const filmKey=JSON.stringify([dub.audioMode || "dubbed",dub.voice,dub.style || "natural",dub.quality,dub.captionMode]);
+  const films=availableFilms(dub);
+  for(const kind of ["original","dub"]){
+    $("variant-"+kind).hidden=!films[kind];
+    const download=$(kind==="original"?"download-original-film":"download-dub");
+    download.hidden=!films[kind]; download.href=asset(filmFile(kind,true));
+  }
+  const preferred=films.dub?"dub":films.original?"original":"source";
+  if(initial) setPreview(preferred,false);
+  else if(previewMode!=="source" && !films[previewMode]) setPreview(preferred);
+  else if(!manualPreview && preferred!==previewMode) setPreview(preferred);
+  else if(previewMode!=="source" && filmKey!==lastFilmKey) setPreview(previewMode);
+  lastFilmKey=filmKey;
   $("dub-title").textContent=filmStatus(dub) || "成片制作";
   const actual=$("current-voice"), label=voiceNames[dub.voice] || "音色未记录";
   actual.hidden=!available && !active;
-  actual.textContent=dub.audioMode==="original"?(available?"当前成片使用原音轨":"本次任务保留原音轨"):(available?"当前成片音色　":"本次任务音色　")+label;
+  actual.textContent=dub.audioMode==="original"?(available?"当前成片使用原音轨":"本次任务保留原音轨"):(available?"当前成片音色　":"本次任务音色　")+label+" · "+(styleNames[dub.style] || styleNames.natural);
   const pct=phase(job).pct, message=state==="none"?"选择声音后即可用当前字幕生成成片。":dub.message;
   // Historical fast renders can contain the former 8 kHz voice.
   const qualityText=dub.audioMode!=="original" && dub.quality?dub.quality==="fast"?"快速":"标准 · 24 kHz":"";
-  $("dub-message").textContent=[message,state!=="none"?qualityText:"",positionText(job),active && pct!==null?pct+"%":""].filter(Boolean).join(" · ");
+  const partial=dub.audioMode==="both" && films.original && !films.dub?"原声字幕版已可下载":"";
+  $("dub-message").textContent=[message,partial,state!=="none"?qualityText:"",positionText(job),active && pct!==null?pct+"%":""].filter(Boolean).join(" · ");
   const bar=$("dub-progress"); bar.hidden=!(active && pct!==null); if(!bar.hidden) bar.value=pct;
-  $("request-dub").textContent=active?"处理中":state==="error"?"重试生成":["stale","ready"].includes(state)?"重新生成":"生成成片";
-  $("request-dub").disabled=active || submittingDubId===job.id;
+  $("request-dub").textContent=active?"处理中":state==="error"?"重试生成":["stale","ready"].includes(state)?"重新生成":"开始翻译";
   $("job-voice").disabled=active || submittingDubId===job.id;
-  $("job-audio-mode").disabled=active || submittingDubId===job.id;
+  $("job-style").disabled=active || submittingDubId===job.id;
+  $("job-out-original").disabled=active || submittingDubId===job.id;
+  $("job-out-dubbed").disabled=active || submittingDubId===job.id;
+  updateOutputButton("job");
   updateAudition("job");
   $("job-quality").disabled=active || submittingDubId===job.id;
   const known=knownCaptions(job);
@@ -389,14 +461,17 @@ function syncDub(job,initial=false) {
   if(waitingForCaptionCheck && !pending && !protectPicture(job)){ showOverlay=true; attachTracks(); applyLanguage(); }
   waitingForCaptionCheck=pending;
   updateSubtitleControls();
-  $("download-dub").hidden=!available; $("download-dub").href=asset("dub-download.mp4"); $("download-dub").textContent="下载"+filmName(dub);
+  if($("exports").open) updateFilmExports(dub);
 }
-$("variant-source").onclick=()=>{if(previewMode!=="source") setPreview("source");};
-$("variant-dub").onclick=()=>{if(previewMode!=="dub" && jobNow()?.dub?.status==="ready") setPreview("dub");};
+for(const kind of ["source","original","dub"]) $("variant-"+kind).onclick=()=>{
+  if(kind!=="source" && !availableFilms(jobNow()?.dub)[kind]) return;
+  manualPreview=true;
+  if(previewMode!==kind) setPreview(kind);
+};
 $("request-dub").onclick=async()=>{
-  const job=jobNow(); if(!job || job.status!=="ready") return;
+  const job=jobNow(); if(!job || job.status!=="ready" || !outputMode("job")) return;
   if(sampleOwner==="job") stopAudition();
-  submittingDubId=job.id; syncDub(job);
+  manualPreview=false; submittingDubId=job.id; syncDub(job);
   try{
     await api(jobPath(job.id)+"/dub",{...soundSettings("job"),captionMode:knownCaptions(job)?"keep":$("job-captions").value});
     await loadJobs();
@@ -406,7 +481,7 @@ $("request-dub").onclick=async()=>{
 function attachTracks() {
   trackVersion++;
   player.querySelectorAll("track").forEach(t=>{ t.track.mode="disabled"; t.remove(); });
-  if(!showOverlay || previewMode==="dub" || protectPicture() || awaitingDetection()){ applyTracks(); return; }
+  if(!showOverlay || previewMode!=="source" || protectPicture() || awaitingDetection()){ applyTracks(); return; }
   const t=el("track");
   t.kind="subtitles"; t.srclang="zh-CN"; t.label=language==="zh"?"简体中文":"中英双语"; t.dataset.mode=language;
   t.default=true; t.src=asset(language+".vtt")+"?v="+trackVersion;
@@ -414,7 +489,7 @@ function attachTracks() {
   applyTracks();
 }
 function applyTracks() {
-  const wanted=previewMode==="dub" || protectPicture() || awaitingDetection()?null:player.querySelector('track[data-mode="'+language+'"]')?.track;
+  const wanted=previewMode!=="source" || protectPicture() || awaitingDetection()?null:player.querySelector('track[data-mode="'+language+'"]')?.track;
   for(const track of player.textTracks) track.mode=track===wanted?"showing":"disabled";
 }
 player.addEventListener("loadedmetadata",applyTracks);
@@ -501,6 +576,16 @@ $("save-cues").onclick=async()=>{
   } catch(err) { $("edit-note").textContent=err.message; }
   finally { saving=false; $("save-cues").disabled=false; }
 };
+function updateFilmExports(dub={}) {
+  const films=availableFilms(dub), dubbed=$("export-dub"), original=$("export-original-film");
+  dubbed.hidden=!films.dub; original.hidden=!films.original;
+  dubbed.querySelector("b").textContent="中文配音版 MP4";
+  dubbed.querySelector("small").textContent=[voiceNames[dub.voice] || "音色未记录",styleNames[dub.style] || styleNames.natural].join(" · ");
+  dubbed.href=asset(filmFile("dub",true)); original.href=asset(filmFile("original",true));
+  const dual=$("export-dual-audio");
+  dual.hidden=!(dub.audioMode==="both" && dub.status==="ready" && films.original);
+  dual.href=asset("dual-audio.mp4");
+}
 $("export-button").onclick=()=>{
   const dual=transcriptDual;
   $("export-title").textContent=jobNow()?.title || "当前视频";
@@ -514,13 +599,7 @@ $("export-button").onclick=()=>{
   mp4.querySelector("small").textContent=confirmedKeep?"保留原声，仅显示画面中已有的字幕":"播放时可切换中文和中英双语字幕";
   original.querySelector("small").textContent="保存导入时的原始视频文件";
   original.parentElement.append(original);
-  const dubLink=$("export-dub"); dubLink.hidden=jobNow()?.dub?.status!=="ready";
-  if(!dubLink.hidden){
-    const dub=jobNow().dub;
-    dubLink.querySelector("b").textContent=filmName(dub)+" MP4";
-    dubLink.querySelector("small").textContent=dub.audioMode==="original"?"保留原声，含中文字幕":"中文配音 · "+(voiceNames[dub.voice] || "音色未记录");
-    dubLink.href=asset("dub-download.mp4"); dubLink.parentElement.prepend(dubLink);
-  }
+  updateFilmExports(jobNow()?.dub);
   $("srt-name").textContent=dual?"中英双语 SRT":"中文字幕 SRT";
   setNote($("download-status")); $("exports").showModal();
 };

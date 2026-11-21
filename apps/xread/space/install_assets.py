@@ -1,7 +1,9 @@
-"""Install the platform-independent files of the verified 2.1 release."""
+"""Install the platform-independent files from the verified Windows release."""
 
 import argparse
 import hashlib
+import json
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import tempfile
@@ -11,22 +13,17 @@ from urllib.request import Request, urlopen
 import zipfile
 
 
-DIGEST = "c525f9b37845f164e8b3000cb830cd681e4c6efc37b80abe5117ad6d226a924b"
-SIZE = 722147670
-URL = ("https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/"
-       "releases/Xread-Web-2.1-Windows-x64.zip?download=true")
+manifest = json.loads(Path(__file__).with_name("release.json").read_text(encoding="utf8"))
+DIGEST, SIZE = manifest["sha256"], manifest["size"]
+URL = "https://huggingface.co/spaces/dellweb3/Translateall/resolve/main/releases/" + manifest["file"] + "?download=true"
 DEMO = {"captions.srt", "dubbed.mp4", "source.mp4"}
-WEB = {"poster.jpg"} | {
-    f"voice-{voice}-{quality}.mp3"
-    for voice in ("female", "female_clear", "male")
-    for quality in ("standard", "fast")
-}
+PREVIEW = re.compile(r"voice-[a-z_]+-(?:standard|fast)(?:-speech|-sweet)?\.mp3")
 
 
 def extract(archive, destination):
     with archive.open("rb") as stream:
         if archive.stat().st_size != SIZE or hashlib.file_digest(stream, "sha256").hexdigest() != DIGEST:
-            raise ValueError("Unexpected 2.1 release size or SHA-256")
+            raise ValueError("Unexpected release size or SHA-256")
         stream.seek(0)
         with zipfile.ZipFile(stream) as bundle:
             for member in bundle.infolist():
@@ -35,7 +32,8 @@ def extract(archive, destination):
                     continue
                 selected = (path.parts[:2] == ("Xread", "models")
                             or (path.parent.as_posix() == "Xread/demo" and path.name in DEMO)
-                            or (path.parent.as_posix() == "Xread/web" and path.name in WEB))
+                            or (path.parent.as_posix() == "Xread/web" and
+                                (path.name == "poster.jpg" or PREVIEW.fullmatch(path.name))))
                 if selected:
                     target = destination.joinpath(*path.parts)
                     target.parent.mkdir(parents=True, exist_ok=True)
@@ -50,12 +48,12 @@ def install(archive, destination):
             return
         pointer = archive.read_text(encoding="ascii").splitlines()
         if pointer != ["version https://git-lfs.github.com/spec/v1", f"oid sha256:{DIGEST}", f"size {SIZE}"]:
-            raise ValueError("Expected the verified 2.1 release or its matching LFS pointer")
+            raise ValueError("Expected the verified release or its matching LFS pointer")
     with tempfile.TemporaryDirectory() as work:
         downloaded = Path(work) / "release.zip"
         for attempt in range(3):
             try:
-                request = Request(URL, headers={"User-Agent": "Xread-Space-build/2.1"})
+                request = Request(URL, headers={"User-Agent": "Xread-Space-build/2.2"})
                 with urlopen(request, timeout=120) as source, downloaded.open("wb") as output:
                     shutil.copyfileobj(source, output, length=1024 * 1024)
                 extract(downloaded, destination)

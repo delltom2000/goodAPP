@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f6f5">
+  <title>Xread 2.1 · 中文视频译制台</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="mast"><div class="mast-inner">
+    <div class="brand" aria-label="Xread"><span class="brand-mark" aria-hidden="true"><b></b><b></b><b></b><b></b></span>Xread</div>
+    <span class="brand-context">中文视频译制台</span>
+    <span class="version-label">v2.1</span>
+    <button class="library-button" id="open-library"><i class="icon i-library" aria-hidden="true"></i>任务与历史 <span id="job-count">0</span></button>
+  </div></header>
+
+  <main class="desk">
+    <aside class="rail" id="rail">
+      <div id="queue-panel">
+        <div class="queue-head"><div class="section-label"><i class="icon i-library" aria-hidden="true"></i><h2>任务与历史</h2></div><span id="queue-count"></span></div>
+        <div class="queue-tools"><label for="queue-filter">查看</label><select id="queue-filter">
+          <option value="all">全部任务</option><option value="active">进行中</option><option value="ready">已就绪</option><option value="issue">需处理</option>
+        </select></div>
+        <div id="history-list"></div>
+      </div>
+    </aside>
+    <div class="stage">
+    <div class="intro">
+      <h1>视频译制台<span class="title-dot" aria-hidden="true">.</span></h1>
+      <p>批量导入视频，生成带中文字幕的原声或中文配音成片。</p>
+    </div>
+
+    <section class="import-card" aria-label="导入视频">
+      <div class="method-row" role="group" aria-label="视频来源">
+        <button id="tab-link" class="method selected" aria-pressed="true"><i class="icon i-link" aria-hidden="true"></i>X 帖子链接</button>
+        <button id="tab-file" class="method" aria-pressed="false"><i class="icon i-folder" aria-hidden="true"></i>本地视频</button>
+      </div>
+      <form id="import-form">
+        <div class="entry">
+          <span class="entry-prefix" id="entry-prefix" aria-hidden="true">𝕏</span>
+          <textarea rows="2" id="source-url" autocomplete="off" spellcheck="false" aria-label="X 帖子链接，每行一条" placeholder="粘贴 X 帖子链接，每行一条" required></textarea>
+          <button type="button" id="choose-file" hidden>选择本地视频，可多选…</button>
+          <input type="file" id="source-file" multiple accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi" hidden>
+        </div>
+        <div class="import-actions"><div class="import-settings">
+          <label class="voice-label">成片声音<select id="import-audio-mode"><option value="dubbed">中文配音</option><option value="original">原声＋中文字幕</option></select></label>
+          <div class="voice-settings" id="import-voice-settings"><div class="voice-pick"><label class="voice-label">配音音色<select id="import-voice" aria-describedby="import-voice-hint"></select></label>
+            <button class="audition" id="import-audition" type="button" aria-label="试听导入配音音色" aria-pressed="false">试听</button></div>
+          <label class="voice-label">音质<select id="import-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label></div>
+          <label class="voice-label">画面字幕<select id="import-captions"><option value="auto">自动判断</option><option value="keep">原画已有中文</option><option value="burn">添加中文字幕</option></select></label></div>
+          <button class="primary" id="submit-import" type="submit">加入队列</button></div>
+        <small class="voice-hint" id="import-voice-hint"></small><p class="inline-note" id="import-audio-error" role="status" hidden></p>
+      </form>
+      <p id="import-note" class="inline-note" role="status" hidden></p>
+      <ul id="batch-result" class="batch-result" aria-label="批量导入结果" hidden></ul>
+    </section>
+
+    <section id="work" aria-label="当前任务" aria-busy="true">
+      <div id="status-card" class="status-card" hidden>
+        <span class="status-graphic" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="status-copy"><h2 id="status-title">正在载入</h2><p id="status-text" role="status"></p><progress id="status-progress" max="100" aria-label="字幕任务进度" hidden></progress></div>
+        <button id="retry" class="quiet" hidden>重试任务</button>
+      </div>
+      <div class="workspace" id="workspace" hidden>
+        <section class="player-card">
+          <div class="card-head"><div class="section-label"><i class="icon i-screen" aria-hidden="true"></i><h2>视频预览</h2></div><div class="switch" role="group" aria-label="视频版本"><button id="variant-source" aria-pressed="true" title="听源视频原声并查看中文字幕">听原声</button><button id="variant-dub" aria-pressed="false">成片</button></div></div>
+          <div class="screen"><video id="player" controls preload="metadata" playsinline aria-label="视频预览播放器"></video></div>
+          <div class="video-detail"><h3 id="video-title">载入中</h3><p class="meta"><span id="source-label"></span><span id="video-meta"></span></p></div>
+          <div class="play-tools">
+            <div class="switch" id="subtitle-switch" role="group" aria-label="预览字幕语言">
+              <button id="lang-original" aria-pressed="false" title="仅看原始画面，关闭额外字幕">原画</button><button id="lang-zh" class="active" aria-pressed="true">中文</button><button id="lang-bi" aria-pressed="false">中英双语</button>
+            </div>
+            <span id="dub-caption" class="meta" hidden></span>
+            <button class="export-button" id="export-button"><i class="icon i-download" aria-hidden="true"></i>导出</button>
+          </div>
+          <div class="dub-panel"><div class="dub-detail"><b id="dub-title">成片制作</b><p id="current-voice" hidden></p><p id="dub-message"></p><progress id="dub-progress" max="100" aria-label="成片生成进度" hidden></progress></div>
+            <div class="dub-actions">
+              <label class="voice-label">下次成片声音<select id="job-audio-mode"><option value="dubbed">中文配音</option><option value="original">原声＋中文字幕</option></select></label>
+              <div class="voice-settings" id="job-voice-settings"><div class="voice-pick"><label class="voice-label">音色<select id="job-voice" aria-describedby="job-voice-hint"></select></label>
+                <button class="audition" id="job-audition" type="button" aria-label="试听下次配音音色" aria-pressed="false">试听</button></div>
+              <label class="voice-label"><span class="sr-only">本任务配音音质</span><select id="job-quality"><option value="standard">标准 · 24 kHz</option><option value="fast">快速 · 24 kHz</option></select></label></div>
+              <label class="voice-label"><span class="sr-only">本任务画面字幕</span><select id="job-captions"><option value="auto">自动判断</option><option value="keep">原画已有中文</option><option value="burn">添加中文字幕</option></select></label>
+              <button class="quiet" id="request-dub">生成成片</button><a id="download-dub" class="quiet" download hidden>下载成片</a></div>
+            <small class="voice-hint" id="job-voice-hint"></small><p class="inline-note" id="job-audio-error" role="status" hidden></p>
+          </div>
+        </section>
+        <section class="transcript">
+          <div class="card-head"><div class="section-label"><i class="icon i-text" aria-hidden="true"></i><h2>字幕文稿</h2></div><div class="transcript-actions"><button class="text-button" id="transcript-bi" aria-pressed="false">双语对照</button><button class="text-button" id="edit">编辑</button></div></div>
+          <div class="cue-scroll" id="cue-scroll" tabindex="0" aria-label="点击字幕跳转播放时间"><div id="cues"></div></div>
+          <div class="transcript-foot"><span id="cue-count">0 条字幕</span><span id="transcript-hint">点击字幕定位画面</span></div>
+        </section>
+      </div>
+      <p id="work-note" class="inline-note" role="status" hidden></p>
+    </section>
+    </div>
+  </main>
+
+  <audio id="voice-preview" preload="none" hidden></audio>
+  <dialog id="library"><div class="dialog-head"><h2>任务与历史</h2><button class="close" data-close="library" aria-label="关闭任务与历史">×</button></div>
+    <div id="mobile-queue"></div>
+  </dialog>
+  <dialog id="exports"><div class="dialog-head"><h2>导出文件</h2><button class="close" data-close="exports" aria-label="关闭导出选项">×</button></div>
+    <p class="dialog-sub" id="export-title"></p>
+    <div class="export-list">
+      <a id="export-dub" download hidden><span><b>成片 MP4</b><small></small></span><i class="icon i-download" aria-hidden="true"></i></a>
+      <a id="export-mp4" download><span><b>字幕视频 MP4</b><small>播放时可切换中文和中英双语字幕</small></span><i class="icon i-download" aria-hidden="true"></i></a>
+      <a id="export-srt" download><span><b id="srt-name">中文字幕 SRT</b><small>带时间轴，可用视频播放器加载</small></span><i class="icon i-download" aria-hidden="true"></i></a>
+      <a id="export-burn" download><span><b>固定中文字幕 MP4</b><small>将中文写入画面，长视频导出需等待转码</small></span><i class="icon i-download" aria-hidden="true"></i></a>
+      <a id="export-original" download><span><b>原视频</b><small>保存导入时的原始视频文件</small></span><i class="icon i-download" aria-hidden="true"></i></a>
+    </div><p class="dialog-sub" id="download-status" role="status" hidden></p>
+  </dialog>
+  <dialog id="editor"><div class="dialog-head"><h2>编辑中文字幕</h2><button class="close" data-close="editor" aria-label="关闭编辑器">×</button></div>
+    <p class="dialog-sub" id="edit-scope" hidden>编辑会更新文稿、配音台词和 SRT 文件。画面中已有的字幕会保留。</p><div class="edit-body" id="edit-body"></div><div class="edit-foot"><span id="edit-note" role="status"></span><button class="quiet" data-close="editor">取消</button><button class="primary small" id="save-cues">保存修改</button></div>
+  </dialog>
+</body>
+</html>

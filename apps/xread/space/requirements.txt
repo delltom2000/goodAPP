@@ -1,0 +1,11 @@
+ctranslate2==4.6.0
+flatbuffers==25.12.19
+numpy==2.2.6
+onnxruntime==1.28.0
+packaging==26.3
+protobuf==7.36.2
+PyYAML==6.0.4
+sentencepiece==0.2.1
+setuptools==80.10.2
+sherpa-onnx==2.0.2
+sherpa-onnx-core==2.0.2

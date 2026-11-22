@@ -12,14 +12,16 @@ import re
 import shutil
 import subprocess
 import sys
-from threading import Lock, RLock, Timer
+from threading import BoundedSemaphore, Lock, RLock, Timer
 import time
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 from urllib.request import build_opener, ProxyHandler
 import uuid
 import webbrowser
 
 import media
+import bailian
+import clips
 from voices import DELIVERY_STYLES, FIXED_VOICES
 
 ROOT = Path(__file__).resolve().parent
@@ -31,10 +33,12 @@ X_URL = re.compile(r"https?://(?:(?:www|mobile)\.)?(?:x\.com|twitter\.com)/(?:[\
 FORMATS = {".mp4", ".mkv", ".mov", ".webm", ".m4v", ".avi", ".mpeg", ".mpg"}
 pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="subtitle")
 caption_scan = ThreadPoolExecutor(max_workers=1, thread_name_prefix="caption-check")
+clip_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="highlights")
+clip_slots = BoundedSemaphore(8)
 state_lock = RLock()
 file_locks = {}
 pending = []
-VERSION = "2.2"
+VERSION = "2.3"
 RENDER_VERSION = "2.1"
 DEFAULT_VOICE = "female"
 VOICES = {"auto", "low", "high", *FIXED_VOICES["standard"]}
@@ -322,6 +326,10 @@ def initialize(library=None):
     library.mkdir(parents=True, exist_ok=True)
     for path in sorted(library.glob("*/job.json"), key=lambda p:read(p).get("created", 0)):
         job = read(path)
+        highlights = job.get("highlights", {})
+        if highlights.get("status") in {"queued", "working"}:
+            update(path.parent, highlights={**highlights, "status":"error",
+                "message":"上次切片在服务重启时中断，重试可继续已完成的步骤。"})
         if job["status"] in {"queued", "working"}:
             if job["source"] == "file" and not (path.parent / job["input"]).is_file():
                 update(path.parent, status="error", message="上次上传未完成，请重新选择文件。")
@@ -374,6 +382,81 @@ def captions_dir(folder):
     return folder / read(folder / "job.json").get("revision", ".")
 
 
+def highlight_status(job):
+    state = job.get("highlights", {})
+    if state and state.get("revision") != job.get("revision", "."):
+        return {"status":"stale", "message":"字幕已修改，可用最新字幕重新生成切片。"}
+    return state
+
+
+def run_highlights(folder, job, request, key):
+    def report(percent, message, **fields):
+        request.update(fields, progress=percent, message=message)
+        update(folder, highlights=request)
+
+    try:
+        report(request["progress"], "正在准备字幕", status="working")
+        rows = clips.text_rows(read(folder / request["revision"] / "cues.json"), job["duration"])
+        if not rows:
+            raise ValueError("当前任务没有可分析的字幕。")
+        model = request["model"]
+        output = folder / "highlights" / request["ticket"]
+        items = request["clips"]
+        if not items:
+            items = clips.propose(rows, job["duration"], request["count"], key, model, report,
+                                  mode=request.get("mode","chronological"))
+            items = [{**item, "id":i} for i,item in enumerate(items,1)]
+            report(30, f"已选出 {len(items)} 个片段", clips=items)
+        source = folder / job["preview"]
+        checked = inspect_picture(folder, job, source, rows)
+        baked = known_picture(checked) or checked.get("visualCaptions") is True or checked.get("captionMode") == "keep"
+        for i, item in enumerate(items):
+            progress = round(30+30*i/len(items))
+            target = output / f"clip-{item['id']:02d}"
+            if not item.get("videoReady"):
+                report(max(request["progress"],progress), f"剪辑第 {i+1}/{len(items)} 个小视频")
+                if not (target / "clip.mp4").is_file():
+                    clips.export_clip(source, target, item, rows, baked)
+                item["videoReady"] = True
+                report(max(request["progress"],round(30+30*(i+1)/len(items))), f"片段 {i+1} 已可预览和下载")
+        for i, item in enumerate(items):
+            progress = max(request["progress"],round(60+35*i/len(items)))
+            target = output / f"clip-{item['id']:02d}"
+            if not item.get("post"):
+                report(progress, f"撰写第 {i+1}/{len(items)} 篇 X 长帖")
+                post, length = clips.write_post(item, rows, key, model)
+                item.update(post=post, length=length)
+            (target / "post.txt").write_text(item["post"] + "\n", encoding="utf-8")
+            item["ready"] = True
+            report(max(progress,round(60+35*(i+1)/len(items))), f"第 {i+1} 篇长帖已就绪")
+        clips.bundle(output, items)
+        report(100, f"{len(items)} 个视频和 X 长帖已就绪", status="ready")
+    except bailian.GatewayError as exc:
+        report(request["progress"], str(exc), status="error")
+    except ValueError as exc:
+        report(request["progress"], str(exc)[:240], status="error")
+    except Exception:
+        report(request["progress"], "切片导出失败，请重试。已生成的长帖会保留。", status="error")
+    finally:
+        clip_slots.release()
+
+
+def highlight_asset(folder, path):
+    parts = path.split("/")
+    state = highlight_status(read(folder / "job.json"))
+    if state.get("ticket") != parts[0]:
+        raise FileNotFoundError
+    output = folder / "highlights" / parts[0]
+    if parts[1:] == ["highlights.zip"] and state.get("status") == "ready":
+        return output / parts[1]
+    if len(parts)==3 and parts[2] in {"clip.mp4", "post.txt", "zh.srt"}:
+        for item in state.get("clips", []):
+            ready = item.get("ready") if parts[2] == "post.txt" else item.get("videoReady") or item.get("ready")
+            if ready and parts[1] == f"clip-{item['id']:02d}":
+                return output / parts[1] / parts[2]
+    raise FileNotFoundError
+
+
 def picture_preview(folder, job):
     with artifact_lock(folder):
         job = read(folder / "job.json")
@@ -408,6 +491,52 @@ class Handler(BaseHTTPRequestHandler):
 
     def valid_origin(self):
         return self.headers.get("Origin") in {None, "http://" + self.headers["Host"]}
+
+    def highlight_key(self):
+        return bailian.configured_key()
+
+    def highlight_login_required(self):
+        return False
+
+    def supplied_highlight_key(self, given_key):
+        return given_key or self.highlight_key()
+
+    def start_highlights(self, folder):
+        data = self.body()
+        count, model = data.get("count", 3), data.get("model", bailian.MODELS[0])
+        mode = data.get("mode", "chronological")
+        given_key = data.get("key", "")
+        if type(count) is not int or not 2 <= count <= 15 or model not in bailian.MODELS or mode not in ("chronological","montage"):
+            raise ValueError("请选择剪辑方式、百炼模型以及 2–15 个片段。")
+        if not isinstance(given_key, str):
+            raise ValueError("请输入百炼 API Key。")
+        key = self.supplied_highlight_key(given_key.strip())
+        if not re.fullmatch(r"[!-~]{8,8192}", key):
+            raise ValueError("请输入有效的百炼 API Key。")
+        with state_lock:
+            job = read(folder / "job.json")
+            if job["status"] != "ready":
+                raise ValueError("请等中文字幕就绪后再切片。")
+            previous = job.get("highlights", {})
+            if previous.get("status") in {"queued","working"}:
+                return self.reply(highlight_status(job))
+            revision = job.get("revision", ".")
+            if (previous.get("status") == "error" and previous.get("revision") == revision
+                    and previous.get("model") == model and previous.get("count") == count
+                    and previous.get("mode","chronological") == mode):
+                request = {**previous, "status":"queued", "message":"等待继续切片"}
+            else:
+                request = {"status":"queued", "message":"等待识别精彩片段", "progress":0, "clips":[],
+                           "ticket":uuid.uuid4().hex, "revision":revision, "model":model, "count":count,"mode":mode}
+            if not clip_slots.acquire(blocking=False):
+                return self.reply({"error":"切片队列已满，请稍后再试。"}, 429)
+            try:
+                update(folder, highlights=request)
+                clip_pool.submit(run_highlights, folder, job, request, key)
+            except Exception:
+                clip_slots.release()
+                raise
+        return self.reply(highlight_status(read(folder / "job.json")), 202)
 
     def serve(self, path, download=None):
         if not path.is_file():
@@ -469,6 +598,21 @@ class Handler(BaseHTTPRequestHandler):
                 jobs = [read(p) for p in request_library.get(LIBRARY).glob("*/job.json")]
             return self.reply([public(j) for j in sorted(jobs, key=lambda j:j["created"], reverse=True)])
         parts = path.strip("/").split("/")
+        if len(parts) == 4 and parts[:2] == ["api","jobs"] and parts[3] == "highlights":
+            folder = open_job(parts[2])
+            locked = self.highlight_login_required()
+            return self.reply({"models":bailian.MODELS, "hasKey":bool(self.highlight_key()),
+                               "requiresLogin":locked,
+                               "state":{} if locked else highlight_status(read(folder / "job.json"))})
+        if len(parts) in (4,5) and parts[0] == "clips":
+            folder = open_job(parts[1])
+            target = highlight_asset(folder, "/".join(parts[2:]))
+            download = parse_qs(urlsplit(self.path).query).get("download") == ["1"]
+            if len(parts) == 5:
+                name = parts[-2] + "-" + target.name
+            else:
+                name = "xread-highlights.zip"
+            return self.serve(target, name if download else None)
         if len(parts) == 4 and parts[:2] == ["api","jobs"] and parts[3] == "cues":
             return self.reply(read(captions_dir(open_job(parts[2])) / "cues.json"))
         if len(parts) == 3 and parts[0] == "media":
@@ -569,10 +713,12 @@ class Handler(BaseHTTPRequestHandler):
             folder = new_job("x", "X 视频 · " + match[1], url=url, autoVoice=voice,
                              autoQuality=quality, autoStyle=style, captionMode=caption_mode(data.get("captionMode", "auto")), audioMode=sound)
         else:
-            match = re.fullmatch(r"/api/jobs/([^/]+)/(retry|cues|dub)", path)
+            match = re.fullmatch(r"/api/jobs/([^/]+)/(retry|cues|dub|highlights)", path)
             if not match:
                 raise FileNotFoundError
             folder = open_job(match[1])
+            if match[2] == "highlights":
+                return self.start_highlights(folder)
             if match[2] == "dub":
                 data = self.body()
                 sound, voice, quality, style = sound_options(data.get("audioMode", "dubbed"),

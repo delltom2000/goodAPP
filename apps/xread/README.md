@@ -1,4 +1,4 @@
-# Xread 2.2 中文视频译制台
+# Xread 2.3 中文视频译制台
 
 Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://dellweb3-translateall.hf.space/download/windows)
 
@@ -28,6 +28,12 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 
 例如，Lauren Tan 访谈本身已有双语字幕，可直接沿用原画，打开「双语对照」校对已有字幕。没有字幕的英文视频会先生成带时间轴的英文文稿，再翻译成简体中文。[示例 X 帖子](https://x.com/NoDiscoInHere/status/2115421187044225159)
 
+## AI 切片与 X 长帖
+
+字幕完成后打开「AI 切片」。选「观点混剪」时，百炼从字幕选取开场、论据和收束，可调整段落顺序。45 分钟以上默认尝试出 10 条，每条约两分钟。也可按原时间顺序切片。FFmpeg 负责拼接原声视频、处理接缝和重排字幕。每段做好即可预览和下载，约 1000 字的中文 X 长帖随后生成。也可打包下载全部文件。[FFmpeg 项目](https://github.com/FFmpeg/FFmpeg)
+
+公开 Space 的切片功能需要手机号和访问码验证。自建用户请使用自己的百炼 API Key。Windows 版可以在切片窗口输入 Key，也可在本机设置 `DASHSCOPE_API_KEY` 或指向本地凭据文件的 `XREAD_BAILIAN_KEY_FILE`。自建 HF Space 需要配置运行时 Secrets `DASHSCOPE_API_KEY`、`XREAD_HIGHLIGHT_PHONE` 和 `XREAD_HIGHLIGHT_ACCESS_CODE`。
+
 ## 源码导览
 
 | 模块 | 用途 |
@@ -36,7 +42,8 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 | `media.py`、`detect_captions.py` | 获取视频、解析字幕轨、检查画面里已有的中文字幕 |
 | `engine.py` | 调用 whisper.cpp 识别英文，用 CTranslate2 和 SentencePiece 完成英译中 |
 | `voices.py`、`dub.py` | 普通话合成、音色选择、对齐字幕时间轴和成片导出 |
+| `clips.py`、`bailian.py` | 调用百炼选片和写稿，按时间轴导出 MP4、SRT 和长帖 |
 
 上表中的源码位于 `Xread/`。Windows 发布包包含运行环境、FFmpeg 和所需模型，组件来源与许可见包内的 `licenses` 和 `tools` 目录。在线版单文件上限为 512 MB，单个会话同时最多有八个待处理任务。[goodAPP 源码目录](https://github.com/delltom2000/goodAPP/tree/main/apps/xread) · [Space 项目页](https://huggingface.co/spaces/dellweb3/Translateall)
 
-在本目录使用 Docker 构建时，先把上方 Windows ZIP 下载到 `releases/Xread-Web-2.2-Windows-x64.zip`。执行 `docker build -t xread .`，然后执行 `docker run --rm -p 127.0.0.1:7860:7860 -e XREAD_SPACE_LOCAL_TEST=1 -e XREAD_CONTAINER_LOCAL=1 xread`，在浏览器访问 `http://127.0.0.1:7860`。
+在本目录使用 Docker 构建时，先把上方 Windows ZIP 下载到 `releases/Xread-Web-2.3-Windows-x64.zip`。执行 `docker build -t xread .`，然后执行 `docker run --rm -p 127.0.0.1:7860:7860 -e XREAD_SPACE_LOCAL_TEST=1 -e XREAD_CONTAINER_LOCAL=1 xread`，在浏览器访问 `http://127.0.0.1:7860`。

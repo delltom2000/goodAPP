@@ -1,8 +1,8 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const player = $("player");
-const statusNames = {queued:"等待处理",working:"处理中",ready:"已完成",error:"需要重试"};
-const sourceNames = {x:"X 视频",file:"本地视频",demo:"内置示例"};
+const statusNames = {queued:"等待处理",working:"处理中",ready:"已完成",error:"需要重试",paused:"已暂停",stopped:"已停止"};
+const sourceNames = {x:"X 视频",youtube:"YouTube 视频",file:"本地视频",demo:"内置示例"};
 const femaleVoices = {
   female:"自然女声", female_clear:"清亮女声", female_qinghe:"青禾女声",
   female_yunshu:"云舒女声", female_xiaoman:"小满女声"
@@ -194,7 +194,7 @@ function selectMethod(next) {
   mode = next;
   const local = next === "file";
   $("source-url").hidden = local; $("source-url").required = !local;
-  $("entry-prefix").textContent = local ? "＋" : "𝕏";
+  $("entry-prefix").textContent = local ? "＋" : "↗";
   $("choose-file").hidden = !local;
   for(const [id,on] of [["tab-link",!local],["tab-file",local]]) {
     $(id).classList.toggle("selected",on); $(id).setAttribute("aria-pressed",String(on));
@@ -218,13 +218,15 @@ function sendFile(file,sound,captionMode,onProgress) {
     xhr.open("POST","/api/upload");
     xhr.setRequestHeader("X-Xread","1");
     xhr.setRequestHeader("X-Filename",encodeURIComponent(file.name));
-    xhr.setRequestHeader("X-Audio-Mode",sound.audioMode);
-    if(sound.audioMode!=="original"){
-      xhr.setRequestHeader("X-Voice",sound.voice);
-      xhr.setRequestHeader("X-Quality",sound.quality);
-      xhr.setRequestHeader("X-Style",sound.style);
+    if(sound) {
+      xhr.setRequestHeader("X-Audio-Mode",sound.audioMode);
+      if(sound.audioMode!=="original"){
+        xhr.setRequestHeader("X-Voice",sound.voice);
+        xhr.setRequestHeader("X-Quality",sound.quality);
+        xhr.setRequestHeader("X-Style",sound.style);
+      }
+      xhr.setRequestHeader("X-Caption-Mode",captionMode);
     }
-    xhr.setRequestHeader("X-Caption-Mode",captionMode);
     xhr.setRequestHeader("Content-Type","application/octet-stream");
     xhr.upload.onprogress = e=>{
       if(e.lengthComputable) onProgress("上传 "+Math.floor(100*e.loaded/e.total)+"%");
@@ -261,7 +263,6 @@ $("import-form").onsubmit = async e=>{
       entry.append(state,el("span",name)); list.append(entry);
       setNote($("import-note"),"正在导入 "+(i+1)+" / "+items.length);
       try {
-        if(!local && !/^https?:\/\/(?:www\.|mobile\.)?(?:x\.com|twitter\.com)\/(?:[A-Za-z_0-9]+\/status|i\/web\/status)\/\d+(?:[/?#].*)?$/i.test(item)) throw new Error("请输入有效的 X 帖子链接");
         const job=local?await sendFile(item,sound,captionMode,text=>state.textContent=text):await api("/api/jobs",{url:item,...sound,captionMode});
         addJob(job); firstJob ||= job; state.textContent="已加入";
       } catch(err) {
@@ -291,10 +292,10 @@ function filmStatus(dub) {
 function phase(job) {
   const dub=job.dub || {}, subtitles=job.status!=="ready", state=subtitles?job.status:dub.status || "none";
   const active=state==="queued" || state==="working";
-  const group=active?"active":state==="error" || state==="stale"?"issue":"ready";
+  const group=active?"active":["error","stale","paused","stopped"].includes(state)?"issue":"ready";
   const value=subtitles?job.progress:dub.progress;
   const pct=Number.isFinite(value)?Math.round(Math.max(0,Math.min(100,value))):null;
-  const text=subtitles?(state==="working"?"字幕处理中":state==="error"?"字幕处理失败":"字幕排队"):state==="none"?"字幕已就绪":filmStatus(dub);
+  const text=subtitles?(state==="working"?"字幕处理中":state==="error"?"字幕处理失败":statusNames[state]):state==="none"?"字幕已就绪":filmStatus(dub);
   return {state,active,group,pct,text,detail:subtitles?job.message:dub.message};
 }
 function positionText(job) { return job.queuePosition>0?"队列第 "+job.queuePosition+" 位":""; }
@@ -340,10 +341,11 @@ for(const dialog of document.querySelectorAll("dialog")) dialog.addEventListener
 });
 function showWorkError(err) { setNote($("work-note"),err.message || "无法载入任务。",true); }
 function showStatus(title,description,working,retry=false) {
-  $("workspace").hidden=true; $("highlight-step").hidden=true; $("status-card").hidden=false;
+  $("workspace").hidden=true; showHighlightsFor(null); $("status-card").hidden=false;
   $("status-card").classList.toggle("working",working);
   $("status-title").textContent=title; $("status-text").textContent=description;
   $("retry").hidden=!retry; $("work").setAttribute("aria-busy",String(working));
+  $("pause-task").hidden=$("stop-task").hidden=true;
   $("status-progress").hidden=true;
 }
 async function selectJob(id) {
@@ -360,18 +362,21 @@ async function displayJob() {
   const job=jobNow(); if(!job) return;
   if(job.status!=="ready"){
     const p=phase(job), note=[job.message || statusNames[job.status],positionText(job),p.pct!==null?p.pct+"%":""].filter(Boolean).join(" · ");
-    showStatus(job.title || "视频任务",note,job.status!=="error",job.status==="error");
+    showStatus(job.title || "视频任务",note,p.active,["error","paused"].includes(job.status) && !job.retryUnavailable);
+    $("pause-task").hidden=!job.canControlImport;
+    $("stop-task").hidden=!job.canControlImport && job.status!=="paused";
+    $("retry").textContent=job.status==="paused"?"继续任务":"重试任务";
     if(p.pct!==null){$("status-progress").value=p.pct; $("status-progress").hidden=false;}
     return;
   }
-  if(readyId===job.id) { syncDub(job); return; }
+  if(readyId===job.id) { syncDub(job); showHighlightsFor(rows.length?job:null); return; }
   const version=selectionVersion;
   showStatus("正在打开视频","载入字幕和预览…",true);
   const loaded=await api(jobPath()+"/cues");
   if(version!==selectionVersion) return;
   if(!Array.isArray(loaded)) throw new Error("字幕文稿格式不正确。");
   rows=loaded; readyId=job.id;
-  $("status-card").hidden=true; $("workspace").hidden=false; $("highlight-step").hidden=rows.length===0;
+  $("status-card").hidden=true; $("workspace").hidden=false; showHighlightsFor(rows.length?job:null);
   $("work").setAttribute("aria-busy","false");
   $("source-label").textContent=sourceNames[job.source] || "视频";
   $("video-title").textContent=job.title || "视频";
@@ -551,6 +556,21 @@ $("retry").onclick=async()=>{
   try { await api(jobPath(id)+"/retry",{}); await loadJobs(); }
   catch(err) { showWorkError(err); } finally { $("retry").disabled=false; }
 };
+for(const action of ["pause","stop"]) {
+  $(action+"-task").onclick=async()=>{
+    const id=currentId, button=$(action+"-task");
+    button.disabled=true;
+    try {
+      const job=await api(jobPath(id)+"/"+action,{});
+      addJob(job);
+      if(id===currentId) await displayJob();
+    } catch(error) {
+      if(id===currentId) showWorkError(error);
+    } finally {
+      button.disabled=false;
+    }
+  };
+}
 $("edit").onclick=()=>{
   if(!rows.length) return;
   $("edit-scope").hidden=!protectPicture();
@@ -572,6 +592,7 @@ $("save-cues").onclick=async()=>{
   try {
     await api(jobPath()+"/cues",{rows:updated}); rows=updated;
     renderCues(); attachTracks(); highlightCue(); $("editor").close();
+    refreshHighlights();
     setNote($("work-note"),protectPicture()?"译文修改用于配音和独立字幕文件，原画文字保留。":"文稿和字幕已保存。重新生成可使用更新后的字幕。");
     await loadJobs();
   } catch(err) { $("edit-note").textContent=err.message; }
@@ -633,5 +654,7 @@ async function poll() {
   }
   setTimeout(poll,pollDelay);
 }
-showStatus("正在打开工作台","载入本机任务…",true);
-poll();
+document.addEventListener("DOMContentLoaded",()=>{
+  showStatus("正在打开工作台","载入本机任务…",true);
+  poll();
+});

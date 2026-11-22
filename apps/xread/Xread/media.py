@@ -1,4 +1,4 @@
-"""Download X videos, recover timed captions, and export local browser media."""
+"""Import X videos, recover timed captions, and export local browser media."""
 
 from __future__ import annotations
 

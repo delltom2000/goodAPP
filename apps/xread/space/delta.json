@@ -2,5 +2,5 @@
   "base_file": "Xread-Web-2.1-Windows-x64.zip",
   "base_sha256": "c525f9b37845f164e8b3000cb830cd681e4c6efc37b80abe5117ad6d226a924b",
   "patch_file": "Xread-2.1-to-2.3.delta.zip",
-  "patch_sha256": "c3ff17165d4c049857c1b109d5ae06d1f22f2fcc2d4b06abddb7982aa7fd0f1b"
+  "patch_sha256": "b8d73847cbbf8e7b57f0262ccbfa707809f5a343bd55ea8d805f912da0ebfe38"
 }

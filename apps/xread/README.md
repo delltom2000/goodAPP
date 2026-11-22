@@ -1,6 +1,6 @@
 # Xread 2.3 中文视频译制台
 
-Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://dellweb3-translateall.hf.space/download/windows)
+Xread 将 X 帖子或本地视频制作成带中文字幕的 MP4。可以保留原讲话和现场声，也可以将英文对白替换为普通话配音。[打开在线工作台](https://dellweb3-translateall.hf.space) · [下载 Windows x64 版](https://dellweb3-translateall.hf.space/download/windows)
 
 ## 选择使用方式
 
@@ -8,7 +8,7 @@ Xread 将公开 X 帖子中的英文视频或本地视频制作成带中文字�
 | --- | --- | --- |
 | 启动 | 用浏览器打开工作台 | 完整解压发布包，双击 `Start Xread.cmd` |
 | 处理位置 | Hugging Face 免费 CPU，上传文件后排队 | 本机 CPU，模型随包提供 |
-| 任务和结果 | 按浏览器会话隔离，使用临时存储，完成后请下载 | 默认保存在 `%LOCALAPPDATA%\Xread\Library` |
+| 任务和结果 | 按浏览器会话隔离。切片可选 CloudBase 续存 | 默认保存在 `%LOCALAPPDATA%\Xread\Library` |
 
 Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作台。公开 X 帖子的下载需要网络，本地视频可离线制作。[打开本机工作台](http://127.0.0.1:8765/)
 
@@ -30,9 +30,15 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 
 ## AI 切片与 X 长帖
 
-字幕完成后，工作台显示可选的「第二步 · AI 切片与 X 推文」。选「观点混剪」时，百炼从字幕选取开场、论据和收束，可调整段落顺序。45 分钟以上默认尝试出 10 条，每条约两分钟。也可按原时间顺序切片。FFmpeg 负责拼接原声视频、处理接缝和重排字幕。每段做好即可预览和下载，约 1000 字的中文 X 长帖随后生成。也可打包下载全部文件。[FFmpeg 项目](https://github.com/FFmpeg/FFmpeg)
+字幕完成后，可在「切片与推文」选择原始视频、原声字幕版或中文配音版。百炼按字幕时间码提炼观点，FFmpeg 剪辑所选视频并重排字幕。切片根据内容取 2–5 分钟，优先保留能独立讲清主张、依据和结论的片段。拆不开的内容可以保留整片。[FFmpeg 项目](https://github.com/FFmpeg/FFmpeg)
 
-公开 Space 的切片功能需要手机号和访问码验证。自建用户请使用自己的百炼 API Key。Windows 版可以在切片窗口输入 Key，也可在本机设置 `DASHSCOPE_API_KEY` 或指向本地凭据文件的 `XREAD_BAILIAN_KEY_FILE`。自建 HF Space 需要配置运行时 Secrets `DASHSCOPE_API_KEY`、`XREAD_HIGHLIGHT_PHONE` 和 `XREAD_HIGHLIGHT_ACCESS_CODE`。
+每段就绪即可预览并编辑草稿。长帖并行生成，约 1000 字是写作目标。自动选模会按复核意见重写，仍未通过时切换候补模型。失败项会显示原因，从断点继续只补写缺少的长帖。
+
+打开「切片前和 Agent 讨论」可以先看字幕提纲和方案，用自然语言调整片数、主题和顺序。Enter 发送，Shift+Enter 换行。追问选片理由时可保留原方案。核对时间线后点「确认方案并切片」，讨论模式每片 2–5 分钟。
+
+公开 Space 的切片功能需输入已登记的手机号。自建用户请使用自己的百炼 API Key。Windows 版可在切片界面输入 Key，或设置 `DASHSCOPE_API_KEY` 或 `XREAD_BAILIAN_KEY_FILE`。自建 HF Space 请配置运行时 Secrets `DASHSCOPE_API_KEY` 和 `XREAD_HIGHLIGHT_PHONE`。
+
+跨设备恢复需要在 CloudBase PG 环境创建私有 `xread-checkpoints` 桶，并在服务端设置 `XREAD_CLOUDBASE_KEY`。本机也可使用 `XREAD_CLOUDBASE_KEY_FILE` 指定自己的凭据文件。勾选「云端续存」后，待备份完成再复制恢复链接。持有恢复链接即可读取对应备份。
 
 ## 源码导览
 
@@ -43,6 +49,7 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 | `engine.py` | 调用 whisper.cpp 识别英文，用 CTranslate2 和 SentencePiece 完成英译中 |
 | `voices.py`、`dub.py` | 普通话合成、音色选择、对齐字幕时间轴和成片导出 |
 | `clips.py`、`bailian.py` | 调用百炼选片和写稿，按时间轴导出 MP4、SRT 和长帖 |
+| `cloud_cache.py` | 保存并恢复 CloudBase 私有断点 |
 
 上表中的源码位于 `Xread/`。Windows 发布包包含运行环境、FFmpeg 和所需模型，组件来源与许可见包内的 `licenses` 和 `tools` 目录。在线版单文件上限为 512 MB，单个会话同时最多有八个待处理任务。[goodAPP 源码目录](https://github.com/delltom2000/goodAPP/tree/main/apps/xread) · [Space 项目页](https://huggingface.co/spaces/dellweb3/Translateall)
 

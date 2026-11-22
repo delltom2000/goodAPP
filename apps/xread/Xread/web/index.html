@@ -5,11 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f6f6f5">
   <title>Xread 2.3 · 中文视频译制台</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/app.js" defer></script>
-  <script src="/static/highlights.js" defer></script>
+  <script>
+    if(location.protocol==="file:") document.documentElement.classList.add("source-file");
+  </script>
+  <style>
+    #local-start-help{display:none}
+    .source-file body>:not(#local-start-help){display:none}
+    .source-file #local-start-help{display:block;max-width:620px;margin:10vh auto;padding:24px;font:16px/1.7 system-ui,sans-serif;color:#27233e}
+  </style>
+  <link rel="stylesheet" href="/static/style.css?v=agent-chat-2">
+  <script src="/static/app.js?v=x-only" defer></script>
+  <script src="/static/highlights.js?v=agent-chat-3" defer></script>
 </head>
 <body>
+  <section id="local-start-help">
+    <h1>请从 Windows 启动 Xread</h1>
+    <p>完整解压安装包后，双击 Xread 文件夹里的 <strong>Start Xread.cmd</strong>。启动程序会启动本机服务并打开工作台。</p>
+  </section>
   <header class="mast"><div class="mast-inner">
     <div class="brand" aria-label="Xread"><span class="brand-mark" aria-hidden="true"><b></b><b></b><b></b><b></b></span>Xread</div>
     <span class="brand-context">中文视频译制台</span>
@@ -33,6 +45,12 @@
       <p>批量翻译视频，可同时制作原声字幕版和中文配音版。</p>
     </div>
 
+    <div class="work-tabs" role="tablist" aria-label="工作台">
+      <button id="translation-tab" type="button" role="tab" aria-selected="true" aria-controls="translation-page">视频与字幕</button>
+      <button id="highlights-tab" type="button" role="tab" aria-selected="false" aria-controls="highlights-page" tabindex="-1">切片与推文</button>
+    </div>
+
+    <div id="translation-page" role="tabpanel" aria-labelledby="translation-tab">
     <section class="import-card" aria-labelledby="import-step-title">
       <div class="workflow-heading"><span class="workflow-step">第一步</span><h2 id="import-step-title">导入视频并生成字幕</h2></div>
       <div class="method-row" role="group" aria-label="视频来源">
@@ -41,7 +59,7 @@
       </div>
       <form id="import-form">
         <div class="entry">
-          <span class="entry-prefix" id="entry-prefix" aria-hidden="true">𝕏</span>
+          <span class="entry-prefix" id="entry-prefix" aria-hidden="true">↗</span>
           <textarea rows="2" id="source-url" autocomplete="off" spellcheck="false" aria-label="X 帖子链接，每行一条" placeholder="粘贴 X 帖子链接，每行一条" required></textarea>
           <button type="button" id="choose-file" hidden>选择本地视频，可多选…</button>
           <input type="file" id="source-file" multiple accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi" hidden>
@@ -65,19 +83,16 @@
       <ul id="batch-result" class="batch-result" aria-label="批量导入结果" hidden></ul>
     </section>
 
-    <section class="highlight-step" id="highlight-step" aria-labelledby="highlight-step-title" hidden>
-      <div>
-        <div class="workflow-heading"><span class="workflow-step">第二步</span><h2 id="highlight-step-title">AI 切片与 X 推文</h2><span class="workflow-optional">可选</span></div>
-        <p>从当前视频的字幕提炼观点，混剪短视频，并为每段写一篇可复制的 X 长帖。</p>
-      </div>
-      <button class="quiet" id="open-highlights" type="button">开始切片</button>
-    </section>
-
     <section id="work" aria-label="当前任务" aria-busy="true">
       <div id="status-card" class="status-card" hidden>
         <span class="status-graphic" aria-hidden="true"><i></i><i></i><i></i></span>
-        <div class="status-copy"><h2 id="status-title">正在载入</h2><p id="status-text" role="status"></p><progress id="status-progress" max="100" aria-label="字幕任务进度" hidden></progress></div>
-        <button id="retry" class="quiet" hidden>重试任务</button>
+        <div class="status-copy"><h2 id="status-title">正在载入</h2><p id="status-text" role="status"></p><progress id="status-progress" max="100" aria-label="字幕任务进度" hidden></progress>
+        </div>
+        <div class="task-controls">
+          <button id="pause-task" class="quiet" type="button" hidden>暂停</button>
+          <button id="stop-task" class="quiet" type="button" hidden>停止</button>
+          <button id="retry" class="quiet" type="button" hidden>重试任务</button>
+        </div>
       </div>
       <div class="workspace" id="workspace" hidden>
         <section class="player-card">
@@ -119,6 +134,53 @@
       <p id="work-note" class="inline-note" role="status" hidden></p>
     </section>
     </div>
+
+    <div id="highlights-page" role="tabpanel" aria-labelledby="highlights-tab" hidden>
+    <p id="highlight-empty" class="highlight-step">当前任务的字幕就绪后，即可在这里生成切片和推文。也可以从任务历史选一个已有字幕的视频。</p>
+    <section class="highlight-step" id="highlight-step" aria-labelledby="highlight-step-title" hidden>
+      <div class="workflow-heading"><h2 id="highlight-step-title">AI 切片与 X 推文</h2></div>
+      <p class="highlight-source" id="highlight-source"></p>
+      <form id="highlight-login" class="highlight-form" hidden>
+        <p>验证后可使用此 Space 配置的百炼网关。</p>
+        <label>手机号<input id="highlight-phone" type="tel" autocomplete="tel" required></label>
+        <button type="submit" class="primary">验证并继续</button>
+      </form>
+      <form id="highlight-form" class="highlight-form" hidden>
+        <p>AI 先读字幕时间轴，再按选中的视频版本剪辑。每段剪完即可预览，长帖随后生成。</p>
+        <div class="highlight-options">
+          <label>切片来源<select id="highlight-video-source"></select></label>
+          <label>百炼模型<select id="highlight-model"></select></label>
+          <label>剪辑方式<select id="highlight-mode"><option value="montage">观点混剪 · 2–5 分钟</option><option value="chronological">顺序切片 · 2–5 分钟</option></select></label>
+          <label>目标片数<input type="number" id="highlight-count" min="1" max="15" step="1" value="3" required></label>
+          <label id="highlight-key-label" hidden>百炼 API Key<input id="highlight-key" type="password" autocomplete="off"></label>
+          <button type="submit" id="highlight-submit" class="primary">生成切片与长帖</button>
+        </div>
+        <label id="highlight-cloud-label" class="inline-note" hidden><input type="checkbox" id="highlight-cloud">云端续存（备份所选视频、字幕和切片）</label>
+        <details id="clip-discussion" class="clip-discussion">
+          <summary>切片前和 Agent 讨论</summary>
+          <div id="clip-plan-turns" class="clip-plan-turns" role="log" aria-label="剪辑讨论"></div>
+          <ol id="clip-plan-list" class="clip-plan-list" aria-label="待确认片段" hidden></ol>
+          <div class="clip-plan-composer">
+            <textarea id="clip-plan-message" rows="2" maxlength="1500" aria-label="和 Agent 讨论剪辑" placeholder="说说要怎么剪，或者问 Agent 为什么这样选"></textarea>
+            <div class="highlight-actions">
+              <button type="button" id="clip-plan-send" class="quiet">让 Agent 先给方案</button>
+              <button type="submit" id="clip-plan-confirm" class="primary">确认方案并切片</button>
+            </div>
+          </div>
+          <p id="clip-plan-note" class="dialog-sub" role="status">每片 2–5 分钟。确认方案后才剪辑。</p>
+        </details>
+      </form>
+      <p id="highlight-message" class="dialog-sub" role="status"></p>
+      <p id="highlight-cloud-status" class="dialog-sub" hidden></p>
+      <button type="button" id="highlight-cloud-copy" class="quiet" hidden>复制跨设备恢复链接</button>
+      <p id="highlight-model-note" class="dialog-sub" hidden></p>
+      <p id="highlight-source-note" class="dialog-sub" hidden></p>
+      <progress id="highlight-progress" max="100" aria-label="AI 切片进度" hidden></progress>
+      <div id="highlight-results"></div>
+      <a class="quiet highlight-zip" id="highlight-zip" download hidden>打包下载生成结果</a>
+    </section>
+    </div>
+    </div>
   </main>
 
   <audio id="voice-preview" preload="none" hidden></audio>
@@ -139,29 +201,6 @@
   </dialog>
   <dialog id="editor"><div class="dialog-head"><h2>编辑中文字幕</h2><button class="close" data-close="editor" aria-label="关闭编辑器">×</button></div>
     <p class="dialog-sub" id="edit-scope" hidden>编辑会更新文稿、配音台词和 SRT 文件。画面中已有的字幕会保留。</p><div class="edit-body" id="edit-body"></div><div class="edit-foot"><span id="edit-note" role="status"></span><button class="quiet" data-close="editor">取消</button><button class="primary small" id="save-cues">保存修改</button></div>
-  </dialog>
-  <dialog id="highlights"><div class="dialog-head"><h2>AI 切片</h2><button class="close" data-close="highlights" aria-label="关闭 AI 切片">×</button></div>
-    <p class="dialog-sub" id="highlight-source"></p>
-    <form id="highlight-login" class="highlight-form" hidden>
-      <p>验证后可使用此 Space 配置的百炼网关。</p>
-      <label>手机号<input id="highlight-phone" type="tel" autocomplete="tel" required></label>
-      <label>访问码<input id="highlight-code" type="password" autocomplete="current-password" required></label>
-      <button type="submit" class="primary">验证并继续</button>
-    </form>
-    <form id="highlight-form" class="highlight-form" hidden>
-      <p>百炼根据字幕选出可独立讲清的观点。「观点混剪」可把关键句提前，再补背景和例子。每一段剪完即可预览，长帖随后生成。</p>
-      <div class="highlight-options">
-        <label>百炼模型<select id="highlight-model"></select></label>
-        <label>剪辑方式<select id="highlight-mode"><option value="montage">观点混剪 · 约 2 分钟</option><option value="chronological">顺序切片</option></select></label>
-        <label>目标片数<input type="number" id="highlight-count" min="2" max="15" step="1" value="3" required></label>
-        <label id="highlight-key-label" hidden>百炼 API Key<input id="highlight-key" type="password" autocomplete="off"></label>
-        <button type="submit" id="highlight-submit" class="primary">生成切片与长帖</button>
-      </div>
-    </form>
-    <p id="highlight-message" class="dialog-sub" role="status"></p>
-    <progress id="highlight-progress" max="100" aria-label="AI 切片进度" hidden></progress>
-    <div id="highlight-results"></div>
-    <a class="quiet highlight-zip" id="highlight-zip" download hidden>打包下载视频、字幕和长帖</a>
   </dialog>
 </body>
 </html>

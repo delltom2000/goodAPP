@@ -21,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Xread"))
 import server
 
 
-BASE = Path(os.environ.get("XREAD_SPACE_DATA", "/tmp/xread-space")).resolve()
+DATA_VOLUME = Path("/data")
+DEFAULT_DATA = DATA_VOLUME / "xread-space" if DATA_VOLUME.is_mount() else Path("/tmp/xread-space")
+BASE = Path(os.environ.get("XREAD_SPACE_DATA", DEFAULT_DATA)).resolve()
 SESSIONS = BASE / "sessions"
 TEMPLATE = BASE / "sample"
 HOST = os.environ.get("SPACE_HOST", "dellweb3-translateall.hf.space")
@@ -64,7 +66,8 @@ def pending(library):
     for path in library.glob("*/job.json"):
         job = server.read(path)
         if (job["status"] in {"working", "queued"} or job.get("dub", {}).get("status") in {"working", "queued"}
-                or job.get("highlights", {}).get("status") in {"working", "queued"}):
+                or job.get("highlights", {}).get("status") in {"working", "queued"}
+                or job.get("clipPlan", {}).get("status") in {"working", "queued"}):
             yield job
 
 
@@ -76,15 +79,6 @@ def cleanup():
                 if (folder.is_dir() and not active.get(folder) and time.time() - folder.stat().st_mtime > TTL
                         and not any(pending(folder))):
                     shutil.rmtree(folder)
-
-
-def account_attempts(now):
-    history = BASE / ".highlight-login-attempts"
-    try:
-        attempts = json.loads(history.read_text(encoding="ascii"))
-    except FileNotFoundError:
-        attempts = []
-    return history, [stamp for stamp in attempts if now - 900 <= stamp <= now]
 
 
 @contextmanager
@@ -128,11 +122,10 @@ class SpaceHandler(server.Handler):
 
     def highlight_proof(self):
         phone = os.environ.get("XREAD_HIGHLIGHT_PHONE", "")
-        code = os.environ.get("XREAD_HIGHLIGHT_ACCESS_CODE", "")
         folder = server.request_library.get()
-        if not phone or not code or not os.environ.get("DASHSCOPE_API_KEY"):
+        if not phone or not os.environ.get("DASHSCOPE_API_KEY"):
             return folder, "", ""
-        proof = hmac.new(KEY, (folder.name+"\0"+phone+"\0"+code).encode(), sha256).hexdigest()
+        proof = hmac.new(KEY, ("phone-only\0"+folder.name+"\0"+phone).encode(), sha256).hexdigest()
         return folder, phone, proof
 
     def highlight_login_required(self):
@@ -153,9 +146,9 @@ class SpaceHandler(server.Handler):
         if int(self.headers.get("Content-Length", "0")) > 4096:
             raise ValueError("验证信息过长。")
         data = self.body()
-        value, code = data.get("phone"), data.get("code")
-        if not isinstance(value, str) or not isinstance(code, str):
-            raise ValueError("请输入手机号与访问码。")
+        value = data.get("phone")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("请输入手机号。")
         now = time.monotonic()
         with login_lock:
             for identifier, attempts in list(login_attempts.items()):
@@ -169,17 +162,7 @@ class SpaceHandler(server.Handler):
             attempts.append(now)
             normalized = re.sub(r"[\s-]", "", value).removeprefix("+86")
             if not hmac.compare_digest(normalized.encode(), phone.encode()):
-                return self.reply({"error":"手机号或访问码不正确。"}, 403)
-            current = time.time()
-            history, failures = account_attempts(current)
-            if len(failures) >= 8:
-                return self.reply({"error":"手机号的验证尝试太频繁，请十五分钟后再试。"}, 429)
-            code_matches = hmac.compare_digest(code.strip().encode(), os.environ["XREAD_HIGHLIGHT_ACCESS_CODE"].encode())
-            if not code_matches:
-                temp = history.with_suffix(".tmp")
-                temp.write_text(json.dumps([*failures, current]), encoding="ascii")
-                temp.replace(history)
-                return self.reply({"error":"手机号或访问码不正确。"}, 403)
+                return self.reply({"error":"手机号不正确。"}, 403)
             (folder / ".highlight-access").write_text(proof, encoding="ascii")
             login_attempts.pop(folder.name, None)
         return self.reply({"verified":True})
@@ -201,6 +184,8 @@ class SpaceHandler(server.Handler):
         if re.fullmatch(r"[a-f0-9]{48}\.[a-f0-9]{64}", value):
             session, signature = value.split(".")
             if hmac.compare_digest(signature, hmac.new(KEY, session.encode(), sha256).hexdigest()):
+                if self.path.split("?", 1)[0] == "/":
+                    self.new_cookie = value
                 return session
         if not create:
             raise PermissionError("请先从工作台首页打开当前会话；也可在独立窗口打开 Space。")
@@ -222,7 +207,7 @@ class SpaceHandler(server.Handler):
             raise FileNotFoundError
         with library_for(self.get_session(create=path == "/api/jobs")):
             if path.startswith("/clips/") and self.highlight_login_required():
-                raise PermissionError("请先验证手机号与访问码。")
+                raise PermissionError("请先验证手机号。")
             return super().route_get(path)
 
     def route_post(self, path):
@@ -231,11 +216,12 @@ class SpaceHandler(server.Handler):
         with library_for(self.get_session(create=False)) as folder:
             if path == "/api/highlights/login":
                 return self.login_highlights()
-            if path.endswith("/highlights") and self.highlight_login_required():
-                raise PermissionError("请先验证手机号与访问码。")
-            if path == "/api/upload" and int(self.headers.get("Content-Length", "0")) > UPLOAD:
+            if path.endswith(("/highlights","/clip-plan")) and self.highlight_login_required():
+                raise PermissionError("请先验证手机号。")
+            upload = path == "/api/upload"
+            if upload and int(self.headers.get("Content-Length", "0")) > UPLOAD:
                 return self.reply({"error":"在线版单个文件最多 512 MB，长视频也可使用 Windows 离线版。"}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-            if path in {"/api/upload", "/api/jobs"}:
+            if upload or path in {"/api/jobs", "/api/cloud/restore"}:
                 if shutil.disk_usage(BASE).free < 3 * 1024**3:
                     return self.reply({"error":"服务器临时空间已满，请稍后重试或使用 Windows 版。"}, HTTPStatus.SERVICE_UNAVAILABLE)
                 if sum(1 for _ in pending(folder)) >= 8:

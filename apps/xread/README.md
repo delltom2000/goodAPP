@@ -30,7 +30,7 @@ Windows 版启动后，请保留启动窗口，通过浏览器访问本机工作
 
 ## AI 切片与 X 长帖
 
-字幕完成后打开「AI 切片」。选「观点混剪」时，百炼从字幕选取开场、论据和收束，可调整段落顺序。45 分钟以上默认尝试出 10 条，每条约两分钟。也可按原时间顺序切片。FFmpeg 负责拼接原声视频、处理接缝和重排字幕。每段做好即可预览和下载，约 1000 字的中文 X 长帖随后生成。也可打包下载全部文件。[FFmpeg 项目](https://github.com/FFmpeg/FFmpeg)
+字幕完成后，工作台显示可选的「第二步 · AI 切片与 X 推文」。选「观点混剪」时，百炼从字幕选取开场、论据和收束，可调整段落顺序。45 分钟以上默认尝试出 10 条，每条约两分钟。也可按原时间顺序切片。FFmpeg 负责拼接原声视频、处理接缝和重排字幕。每段做好即可预览和下载，约 1000 字的中文 X 长帖随后生成。也可打包下载全部文件。[FFmpeg 项目](https://github.com/FFmpeg/FFmpeg)
 
 公开 Space 的切片功能需要手机号和访问码验证。自建用户请使用自己的百炼 API Key。Windows 版可以在切片窗口输入 Key，也可在本机设置 `DASHSCOPE_API_KEY` 或指向本地凭据文件的 `XREAD_BAILIAN_KEY_FILE`。自建 HF Space 需要配置运行时 Secrets `DASHSCOPE_API_KEY`、`XREAD_HIGHLIGHT_PHONE` 和 `XREAD_HIGHLIGHT_ACCESS_CODE`。
 

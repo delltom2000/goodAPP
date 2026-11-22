@@ -340,7 +340,7 @@ for(const dialog of document.querySelectorAll("dialog")) dialog.addEventListener
 });
 function showWorkError(err) { setNote($("work-note"),err.message || "无法载入任务。",true); }
 function showStatus(title,description,working,retry=false) {
-  $("workspace").hidden=true; $("status-card").hidden=false;
+  $("workspace").hidden=true; $("highlight-step").hidden=true; $("status-card").hidden=false;
   $("status-card").classList.toggle("working",working);
   $("status-title").textContent=title; $("status-text").textContent=description;
   $("retry").hidden=!retry; $("work").setAttribute("aria-busy",String(working));
@@ -371,7 +371,8 @@ async function displayJob() {
   if(version!==selectionVersion) return;
   if(!Array.isArray(loaded)) throw new Error("字幕文稿格式不正确。");
   rows=loaded; readyId=job.id;
-  $("status-card").hidden=true; $("workspace").hidden=false; $("work").setAttribute("aria-busy","false");
+  $("status-card").hidden=true; $("workspace").hidden=false; $("highlight-step").hidden=rows.length===0;
+  $("work").setAttribute("aria-busy","false");
   $("source-label").textContent=sourceNames[job.source] || "视频";
   $("video-title").textContent=job.title || "视频";
   const baked=knownCaptions(job) || job.burnedCaptions===true;

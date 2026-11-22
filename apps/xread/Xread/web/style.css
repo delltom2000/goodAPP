@@ -176,7 +176,15 @@ progress::-webkit-progress-bar{background:#e8e5ef;border-radius:3px}progress::-w
 .dub-panel{display:block}.dub-actions{margin-top:8px;gap:7px 9px}
 #current-voice{color:var(--ink);font-weight:600}
 @media(max-width:520px){.import-settings,.dub-actions,.voice-settings{gap:7px 10px}.import-actions .primary{margin-left:auto}.dub-actions .voice-settings{width:100%}.import-settings .voice-settings{flex-wrap:wrap}}
-.play-tools .play-actions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.workflow-heading{display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;margin-bottom:9px}
+.workflow-heading h2{font-size:1.05rem;margin:0;line-height:1.35}
+.workflow-step{font-weight:650;font-size:.8rem;color:var(--purple)}
+.workflow-optional{font-size:.8rem;color:var(--muted)}
+.highlight-step{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;margin:14px 0;padding:14px 17px;background:#fff;border:1px solid var(--line);border-radius:11px}
+.highlight-step[hidden]{display:none}
+.highlight-step .workflow-heading{margin-bottom:4px}
+.highlight-step p{margin:0;color:var(--muted);font-size:.88rem}
+.highlight-step .quiet{color:var(--purple);background:#f6f3fd;border-color:#d9d1ef}
 #highlights{width:min(740px,calc(100vw - 30px));max-height:90dvh;overflow:auto}
 #highlights .highlight-form{display:grid;align-items:start;gap:12px;margin-block:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#faf9fc}
 #highlights .highlight-form[hidden]{display:none}

@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
-MODELS = ("deepseek-v4.1-flash-1017", "deepseek-v4.1-flash", "qwen3.8-max-0902",
+MODELS = ("qwen3.8-max-0902", "deepseek-v4.1-flash-1017", "deepseek-v4.1-flash",
           "qwen4-max", "kimi-k3.1-pro", "glm-5.3")
 DEFAULT_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 

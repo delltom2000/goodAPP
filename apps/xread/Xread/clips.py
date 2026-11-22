@@ -91,13 +91,13 @@ def propose(rows, duration, count, key, model, progress, mode="chronological"):
     montage = mode=="montage" and duration>=150
     floor = 78 if montage else min(18, duration * .45)
     ceiling = 150 if montage else 135
-    per_batch = min(8, count+2)
+    per_batch = min(6, max(4, math.ceil(count/len(starts))+3))
     for batch, offset in enumerate(starts, 1):
         progress(round(30*(batch-1)/len(starts)), f"识别可独立观看的片段 · {batch}/{len(starts)}")
         window = rows[offset:offset+width]
         result = bailian.complete(key, model, MONTAGE if montage else SELECT,
             {"limit":per_batch, "total_duration":round(duration, 2), "columns":["编号","开始秒","结束秒","字幕"],
-             "subtitles":for_model(window, offset)}, 3600 if montage else 2100)
+             "subtitles":for_model(window, offset)}, 2300 if montage else 1800)
         items = result.get("clips")
         if not isinstance(items, list):
             raise ValueError("模型未返回有效的切片列表，可换模型后重试。")
@@ -159,6 +159,13 @@ def write_post(clip, rows, key, model):
             content = answer.get("post")
             post = content.strip() if isinstance(content, str) else ""
         length = len(re.sub(r"\s+", "", post))
+        if length > 1150:
+            ends = [m.end() for m in re.finditer(r"[。！？!?](?:[”’」』])?", post)]
+            for end in reversed(ends):
+                trimmed_length = len(re.sub(r"\s+", "", post[:end]))
+                if 975 <= trimmed_length <= 1150:
+                    post, length = post[:end], trimmed_length
+                    break
         if 850 <= length <= 1150 and len(re.findall(r"[\u3400-\u9fff]", post)) >= length * .55:
             return post, length
         data["feedback"] = f"上次生成 {length} 个非空白字符。请按五段分别展开，最后控制在 950–1050 字。"

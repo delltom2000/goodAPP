@@ -6,6 +6,7 @@
 
 | App | 平台 | 功能 | 源码与说明 | 安装包 |
 | --- | --- | --- | --- | --- |
+| 扫码相机 | Android 6.0+ | 相机与相册扫码，唤起 Google 通行密钥验证 | [源码与说明](apps/qr-camera/) | [下载 1.0 APK](apps/qr-camera/dist/QrCamera-1.0.apk) |
 | 悬浮时钟 | Android 8.0+ | 跨应用显示时间、拖动位置、外观调整、跟随握持方向旋转 | [floating-clock](apps/floating-clock/) | [下载 1.3 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/floating-clock/dist/FloatingClock-1.3.apk) |
 | 净片 CleanClip | Android 8.0+ / 网页 | 手机离线自动查找角落 Logo、跟随位置变化并修补导出；电脑 LaMa 修补工具 | [使用说明](apps/cutlogo-apps/apps/cleanclip/README.md) · [在线体验](https://huggingface.co/spaces/dellweb3/CutLogo) | [0.4.0 自动版 APK](apps/cutlogo-apps/dist/cleanclip-0.4.0-auto.apk) |
 | 币市脉搏 Crypto Pulse | Android 8.0+ / 网页 | 500 个活跃币实时行情；新币雷达用 12 个因子给出可解释评分；多源历史图表与技术指标、自选、中英切换、断网保留离线快照 | [使用说明](apps/crypto-pulse/README.md) · [在线体验](https://crypto-pulse-87453.app.workbuddy.host/?sharecode=HBNRIO22TM) | [下载 1.1.0 APK](https://github.com/delltom2000/goodAPP/raw/refs/heads/main/apps/crypto-pulse/dist/CryptoPulse-1.1.0.apk) |
